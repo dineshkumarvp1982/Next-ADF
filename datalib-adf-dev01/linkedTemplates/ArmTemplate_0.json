@@ -1,0 +1,951 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "datalib-adf-dev01"
+		},
+		"NMonReportingSqlLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'NMonReportingSqlLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"AzureSqlManagedInstanceLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlManagedInstanceLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"ApiLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().BaseURL}"
+		},
+		"KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://EUW-BIS-Keyvault-Dev.vault.azure.net/"
+		},
+		"SelfServeDataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+		},
+		"AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "BatchStorageConnectionString"
+		},
+		"AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "batchstorage-connectionstring"
+		},
+		"DataLakeLandingLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://bislandingdev.dfs.core.windows.net"
+		},
+		"DataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://bisdatalakedevv2.dfs.core.windows.net"
+		},
+		"DatabricksLinkedService_properties_typeProperties_workspaceResourceId": {
+			"type": "string",
+			"defaultValue": "/subscriptions/f7f99ac1-4ec0-4f26-b051-59786c2a0c6c/resourceGroups/DataAnalytics-DBK-RG-BIS-DEV-EUW/providers/Microsoft.Databricks/workspaces/DataAnalytics-DBK-BIS-DEV-EUW"
+		},
+		"DatabricksLinkedService_properties_typeProperties_instancePoolId": {
+			"type": "string",
+			"defaultValue": "1108-102648-fish103-pool-tlgsdcj6"
+		},
+		"DatabricksLinkedService_properties_typeProperties_newClusterVersion": {
+			"type": "string",
+			"defaultValue": "12.2.x-scala2.12"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ApiLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"BaseURL": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('ApiLinkedService_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/KeyVaultLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('KeyVaultLinkedService_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/NMonReportingSqlLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"ServerName": {
+						"type": "string"
+					},
+					"DatabaseName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlMI",
+				"typeProperties": {
+					"connectionString": "[parameters('NMonReportingSqlLinkedService_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeDataLakeLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"DataLakeName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('SelfServeDataLakeLinkedService_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureIntegrationRuntimeEUW')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "West Europe",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 10,
+							"cleanup": false
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfHostedIntegrationRuntime')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"description": "Self hosted integration runtime for current environment.",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/GenesysApiDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ApiLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"BaseURL": {
+							"value": "@dataset().BaseURL",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"BaseURL": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ApiLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/NmonSqlDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "SQL connection object for the NMon Feed database",
+				"linkedServiceName": {
+					"referenceName": "NMonReportingSqlLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ServerName": {
+							"value": "@dataset().ServerName",
+							"type": "Expression"
+						},
+						"DatabaseName": {
+							"value": "@dataset().DatabaseName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"schema": {
+						"type": "string",
+						"defaultValue": "Reference"
+					},
+					"table": {
+						"type": "string"
+					},
+					"ServerName": {
+						"type": "string"
+					},
+					"DatabaseName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlMITable",
+				"schema": [
+					{
+						"name": "DateKey",
+						"type": "varchar"
+					},
+					{
+						"name": "Date",
+						"type": "varchar"
+					},
+					{
+						"name": "DateDesc",
+						"type": "char"
+					},
+					{
+						"name": "DayName",
+						"type": "char"
+					},
+					{
+						"name": "FinDayOfWeek",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "DirDayOfWeek",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "FinWeek",
+						"type": "char"
+					},
+					{
+						"name": "DirWeek",
+						"type": "char"
+					},
+					{
+						"name": "MktWeek",
+						"type": "char"
+					},
+					{
+						"name": "LYFinWeek",
+						"type": "char"
+					},
+					{
+						"name": "FinWeekNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "DirWeekNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "MktWeekNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "LyFinWeekNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "MonthNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "MonthName",
+						"type": "char"
+					},
+					{
+						"name": "FinMonth",
+						"type": "char"
+					},
+					{
+						"name": "FinMonthNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "DirSeasonCode",
+						"type": "char"
+					},
+					{
+						"name": "DirSeason",
+						"type": "char"
+					},
+					{
+						"name": "FinSeasonCode",
+						"type": "char"
+					},
+					{
+						"name": "FinSeason",
+						"type": "char"
+					},
+					{
+						"name": "MktSeasonCode",
+						"type": "char"
+					},
+					{
+						"name": "MktSeason",
+						"type": "char"
+					},
+					{
+						"name": "FinYear",
+						"type": "char"
+					},
+					{
+						"name": "DirYear",
+						"type": "char"
+					},
+					{
+						"name": "MktYear",
+						"type": "char"
+					},
+					{
+						"name": "FinYearNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "DirYearNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "MktYearNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "ProductWeek",
+						"type": "char"
+					},
+					{
+						"name": "ProductWeekNo",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "ProductDayOfWeek",
+						"type": "tinyint",
+						"precision": 3
+					},
+					{
+						"name": "ProductSeasonCode",
+						"type": "char"
+					},
+					{
+						"name": "ProductSeason",
+						"type": "char"
+					},
+					{
+						"name": "ProductYear",
+						"type": "char"
+					},
+					{
+						"name": "ProductYearNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "TYProductSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "LYProductSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "LYProductWeek",
+						"type": "char"
+					},
+					{
+						"name": "2YProductSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "2YProductWeek",
+						"type": "char"
+					},
+					{
+						"name": "DirWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "DirWeekSeqNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "LYDirWeek",
+						"type": "char"
+					},
+					{
+						"name": "LYDirWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "2YDirWeek",
+						"type": "char"
+					},
+					{
+						"name": "2YDirWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "2YFinWeek",
+						"type": "char"
+					},
+					{
+						"name": "2YFinWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "FinWeekSeqNo",
+						"type": "smallint",
+						"precision": 5
+					},
+					{
+						"name": "FinWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "LYFinWeekPrevious",
+						"type": "char"
+					},
+					{
+						"name": "WKProcessesInd",
+						"type": "char"
+					},
+					{
+						"name": "AllDates",
+						"type": "bit"
+					},
+					{
+						"name": "InsertedTimestamp",
+						"type": "char"
+					},
+					{
+						"name": "UpdatedTimestamp",
+						"type": "char"
+					},
+					{
+						"name": "HB_CV",
+						"type": "char"
+					},
+					{
+						"name": "BrandWeek",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DirBrandWeek",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "DirFinWeek",
+						"type": "char"
+					},
+					{
+						"name": "DirFinWeekStartDate",
+						"type": "char"
+					},
+					{
+						"name": "LYFinSeason",
+						"type": "char"
+					},
+					{
+						"name": "TYDirSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "LYDirSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "2YDirSeasonStartWeek",
+						"type": "char"
+					},
+					{
+						"name": "DirFinSeason",
+						"type": "char"
+					},
+					{
+						"name": "DirFinPeriod",
+						"type": "char"
+					}
+				],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().schema",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().table",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/NMonReportingSqlLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RestApiDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ApiLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"BaseURL": {
+							"value": "@dataset().BaseURL",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"BaseURL": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ApiLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeDataLakeBinaryDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SelfServeDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().DataLakeName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"DataLakeName": {
+						"type": "string"
+					},
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SelfServeDataLakeLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeDataLakeDelimitedDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SelfServeDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().DataLakeName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"DataLakeName": {
+						"type": "string"
+					},
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"HasHeader": {
+						"type": "bool"
+					},
+					"Delimiter": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": {
+						"value": "@dataset().Delimiter",
+						"type": "Expression"
+					},
+					"escapeChar": "\\",
+					"firstRowAsHeader": {
+						"value": "@dataset().HasHeader",
+						"type": "Expression"
+					},
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SelfServeDataLakeLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeDataLakeParquetDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SelfServeDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().DataLakeName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"DataLakeName": {
+						"type": "string"
+					},
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SelfServeDataLakeLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ZendeskApiDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ApiLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"BaseURL": {
+							"value": "@dataset().BaseURL",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"BaseURL": {
+						"type": "string"
+					},
+					"RelativeURL": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@dataset().RelativeURL",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ApiLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBatchStorageLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "KeyVaultLinkedService",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedIntegrationRuntime')]",
+				"[concat(variables('factoryId'), '/linkedServices/KeyVaultLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureBatchStorageLinkedServiceAAS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked storage associated with AzureBatchLinkedServiceforAAS",
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "KeyVaultLinkedService",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedIntegrationRuntime')]",
+				"[concat(variables('factoryId'), '/linkedServices/KeyVaultLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDatabricksDeltaLakeLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricksDeltaLake",
+				"typeProperties": {
+					"domain": "https://adb-1382441875587056.16.azuredatabricks.net",
+					"clusterId": "0622-161904-t0txa5iu",
+					"accessToken": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "KeyVaultLinkedService",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "DatabricksToken"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/KeyVaultLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlManagedInstanceLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"ServerName": {
+						"type": "string"
+					},
+					"DatabaseName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlMI",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSqlManagedInstanceLinkedService_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeLandingLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('DataLakeLandingLinkedService_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AzureIntegrationRuntimeEUW",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/AzureIntegrationRuntimeEUW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('DataLakeLinkedService_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AzureIntegrationRuntimeEUW",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/AzureIntegrationRuntimeEUW')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DatabricksLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"MinWorkers": {
+						"type": "int",
+						"defaultValue": 1
+					},
+					"MaxWorkers": {
+						"type": "int",
+						"defaultValue": 4
+					}
+				},
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://westeurope.azuredatabricks.net",
+					"authentication": "MSI",
+					"workspaceResourceId": "[parameters('DatabricksLinkedService_properties_typeProperties_workspaceResourceId')]",
+					"instancePoolId": "[parameters('DatabricksLinkedService_properties_typeProperties_instancePoolId')]",
+					"newClusterNumOfWorker": "@{linkedService().MinWorkers} : @{linkedService().MaxWorkers}",
+					"newClusterSparkConf": {
+						"spark.hadoop.fs.permissions.umask-mode": "000"
+					},
+					"newClusterSparkEnvVars": {
+						"PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+					},
+					"newClusterVersion": "[parameters('DatabricksLinkedService_properties_typeProperties_newClusterVersion')]",
+					"newClusterInitScripts": [],
+					"clusterOption": "Fixed"
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/SelfHostedIntegrationRuntime')]"
+			]
+		}
+	]
+}

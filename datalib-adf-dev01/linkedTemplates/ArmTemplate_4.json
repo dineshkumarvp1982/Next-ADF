@@ -1,0 +1,3732 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "datalib-adf-dev01"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeFromSql')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "IfIsParquet",
+						"type": "IfCondition",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@pipeline().parameters.IsParquet",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "CopyToDataLakeDelimited",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "@pipeline().parameters.SourceQuery",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.SourceServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.SourceDatabaseName",
+													"type": "Expression"
+												},
+												"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+												"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SelfServeDataLakeDelimitedDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"DataLakeName": {
+													"value": "@pipeline().parameters.DestinationDataLakeName",
+													"type": "Expression"
+												},
+												"FolderName": {
+													"value": "@pipeline().parameters.DestinationFolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@pipeline().parameters.DestinationFileName",
+													"type": "Expression"
+												},
+												"HasHeader": true,
+												"Delimiter": ","
+											}
+										}
+									]
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "CopyToDataLakeParquet",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "@pipeline().parameters.SourceQuery",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.SourceServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.SourceDatabaseName",
+													"type": "Expression"
+												},
+												"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+												"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SelfServeDataLakeParquetDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"DataLakeName": {
+													"value": "@pipeline().parameters.DestinationDataLakeName",
+													"type": "Expression"
+												},
+												"FolderName": {
+													"value": "@pipeline().parameters.DestinationFolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@pipeline().parameters.DestinationFileName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceServerName": {
+						"type": "string"
+					},
+					"SourceDatabaseName": {
+						"type": "string"
+					},
+					"SourceQuery": {
+						"type": "string"
+					},
+					"DestinationDataLakeName": {
+						"type": "string"
+					},
+					"DestinationFolderName": {
+						"type": "string"
+					},
+					"DestinationFileName": {
+						"type": "string"
+					},
+					"IsParquet": {
+						"type": "bool",
+						"defaultValue": true
+					}
+				},
+				"folder": {
+					"name": "Self Serve"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeFromSqlIntoDatabricks')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Copy large amount of data in bulk from database in parallel.",
+				"activities": [
+					{
+						"name": "For Each Partition Field",
+						"description": "ForEach activity to get the partition list from Lookup activity and then iterate each of them to Copy activity. ",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get Partition Field List",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Partition Field List').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy One Partition Field Into Delta Table",
+									"description": "Copy activity to copy each partition field from source database store to destination store.",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "SELECT @{pipeline().parameters.SourceColumns} \nFROM @{pipeline().parameters.SourceTableName} \nWHERE @{pipeline().parameters.DateColumnName} \nBETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' \nAND @{pipeline().parameters.PartitionField} = '@{item()[pipeline().parameters.PartitionField]}'",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "AzureDatabricksDeltaLakeSink",
+											"importSettings": {
+												"type": "AzureDatabricksDeltaLakeImportCommand"
+											}
+										},
+										"enableStaging": true,
+										"stagingSettings": {
+											"linkedServiceName": {
+												"referenceName": "DataLakeLinkedService",
+												"type": "LinkedServiceReference"
+											},
+											"path": {
+												"value": "@pipeline().parameters.StagingFolder",
+												"type": "Expression"
+											},
+											"enableCompression": true
+										},
+										"parallelCopies": {
+											"value": "@pipeline().parameters.ParallelRunsLimit",
+											"type": "Expression"
+										},
+										"enableSkipIncompatibleRow": true
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": "@pipeline().parameters.SourceServerName",
+												"DatabaseName": "@pipeline().parameters.SourceDatabaseName",
+												"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+												"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AzureDatabricksDeltaLakeDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"SinkDatabaseName": "@pipeline().parameters.SinkDatabaseName",
+												"SinkTableName": {
+													"value": "@pipeline().parameters.SinkTableName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Get Partition Field List",
+						"description": "Lookup activity to retrieve the list of values to be used in the for each loop.",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "SELECT DISTINCT @{pipeline().parameters.PartitionField}\nFROM @{pipeline().parameters.SourceTableName}\nWHERE @{pipeline().parameters.DateColumnName} \nBETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' ",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SqlServerDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"ServerName": {
+										"value": "@pipeline().parameters.SourceServerName",
+										"type": "Expression"
+									},
+									"DatabaseName": {
+										"value": "@pipeline().parameters.SourceDatabaseName",
+										"type": "Expression"
+									},
+									"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+									"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+									"TableName": " "
+								}
+							},
+							"firstRowOnly": false
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceServerName": {
+						"type": "string"
+					},
+					"SourceDatabaseName": {
+						"type": "string"
+					},
+					"SinkDatabaseName": {
+						"type": "string"
+					},
+					"SinkTableName": {
+						"type": "string"
+					},
+					"SourceTableName": {
+						"type": "string"
+					},
+					"StagingFolder": {
+						"type": "string"
+					},
+					"PartitionField": {
+						"type": "string"
+					},
+					"SourceColumns": {
+						"type": "string"
+					},
+					"ParallelRunsLimit": {
+						"type": "int"
+					},
+					"StartDate": {
+						"type": "string"
+					},
+					"EndDate": {
+						"type": "string"
+					},
+					"DateColumnName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Self Serve"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeFromSqlManagedInstance')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "IfIsParquet",
+						"type": "IfCondition",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@pipeline().parameters.IsParquet",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "CopyToDataLakeDelimited",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlMISource",
+											"sqlReaderQuery": {
+												"value": "@pipeline().parameters.SourceQuery",
+												"type": "Expression"
+											},
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "AzureSqlManagedInstanceDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.SourceServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.SourceDatabaseName",
+													"type": "Expression"
+												},
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SelfServeDataLakeDelimitedDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"DataLakeName": {
+													"value": "@pipeline().parameters.DestinationDataLakeName",
+													"type": "Expression"
+												},
+												"FolderName": {
+													"value": "@pipeline().parameters.DestinationFolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@pipeline().parameters.DestinationFileName",
+													"type": "Expression"
+												},
+												"HasHeader": true,
+												"Delimiter": ","
+											}
+										}
+									]
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "CopyToDataLakeParquet",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlMISource",
+											"sqlReaderQuery": {
+												"value": "@pipeline().parameters.SourceQuery",
+												"type": "Expression"
+											},
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "AzureSqlManagedInstanceDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.SourceServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.SourceDatabaseName",
+													"type": "Expression"
+												},
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SelfServeDataLakeParquetDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"DataLakeName": {
+													"value": "@pipeline().parameters.DestinationDataLakeName",
+													"type": "Expression"
+												},
+												"FolderName": {
+													"value": "@pipeline().parameters.DestinationFolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@pipeline().parameters.DestinationFileName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceServerName": {
+						"type": "string"
+					},
+					"SourceDatabaseName": {
+						"type": "string"
+					},
+					"SourceQuery": {
+						"type": "string"
+					},
+					"DestinationDataLakeName": {
+						"type": "string"
+					},
+					"DestinationFolderName": {
+						"type": "string"
+					},
+					"DestinationFileName": {
+						"type": "string"
+					},
+					"IsParquet": {
+						"type": "bool",
+						"defaultValue": true
+					}
+				},
+				"folder": {
+					"name": "Self Serve"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SelfServeFromSqlParallel')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Partition Field List",
+						"description": "Lookup activity to retrieve the list of values to be used in the for each loop.",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "SELECT DISTINCT @{pipeline().parameters.PartitionField}\nFROM @{pipeline().parameters.SourceTableName}\nWHERE \n@{pipeline().parameters.DateColumnName} BETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}'",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SqlServerDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"ServerName": {
+										"value": "@pipeline().parameters.SourceServerName",
+										"type": "Expression"
+									},
+									"DatabaseName": {
+										"value": "@pipeline().parameters.SourceDatabaseName",
+										"type": "Expression"
+									},
+									"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+									"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+									"TableName": " "
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "For Each Partition Field",
+						"description": "ForEach activity to get the partition list from lookup activity and then iterate each of them to copy activity. ",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Get Partition Field List",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Partition Field List').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"activities": [
+								{
+									"name": "Copy Into Data Lake Parquet",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": {
+												"value": "SELECT @{pipeline().parameters.SourceColumns} FROM @{pipeline().parameters.SourceTableName} WHERE @{pipeline().parameters.DateColumnName} BETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' AND @{pipeline().parameters.PartitionField} = '@{item()[pipeline().parameters.PartitionField]}'",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"parallelCopies": 50
+									},
+									"inputs": [
+										{
+											"referenceName": "SqlServerDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.SourceServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.SourceDatabaseName",
+													"type": "Expression"
+												},
+												"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+												"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+												"TableName": " "
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "SelfServeDataLakeParquetDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"DataLakeName": {
+													"value": "@pipeline().parameters.DestinationDataLakeName",
+													"type": "Expression"
+												},
+												"FolderName": {
+													"value": "@pipeline().parameters.DestinationFolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@concat(pipeline().parameters.SourceTableName,'_',pipeline().parameters.StartDate,'-',pipeline().parameters.EndDate,'_',item().record_type,'.parquet')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceServerName": {
+						"type": "string"
+					},
+					"SourceDatabaseName": {
+						"type": "string"
+					},
+					"SourceTableName": {
+						"type": "string"
+					},
+					"StartDate": {
+						"type": "string"
+					},
+					"EndDate": {
+						"type": "string"
+					},
+					"DestinationFolderName": {
+						"type": "string"
+					},
+					"DestinationDataLakeName": {
+						"type": "string"
+					},
+					"DateColumnName": {
+						"type": "string"
+					},
+					"PartitionField": {
+						"type": "string"
+					},
+					"SourceColumns": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Self Serve"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StagingValidatedToStagingTransformedPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LookupLogStagingTransformed",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Notebook",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 3,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFileName": "*.csv",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "DataLakeDelimitedDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"FolderName": {
+										"value": "log/staging/transformed/@{pipeline().parameters.FolderName}/current/@{pipeline().parameters.FileName}.csv",
+										"type": "Expression"
+									},
+									"FileName": " ",
+									"HasHeader": "True",
+									"Delimiter": ","
+								}
+							}
+						}
+					},
+					{
+						"name": "WriteTaskEnded",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "LookupLogStagingTransformed",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 3,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[Status].[WriteStagingValidatedToStagingTransformed]",
+							"storedProcedureParameters": {
+								"SourceHistoryId": {
+									"value": {
+										"value": "@pipeline().parameters.SourceHistoryId",
+										"type": "Expression"
+									},
+									"type": "Int64"
+								},
+								"InStagingTransformed": {
+									"value": {
+										"value": "@utcnow()",
+										"type": "Expression"
+									},
+									"type": "DateTimeOffset"
+								},
+								"RowsTransformed": {
+									"value": {
+										"value": "@activity('LookupLogStagingTransformed').output.firstRow.RowsTransformed",
+										"type": "Expression"
+									},
+									"type": "Int32"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "ETLManagementLinkedService",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Notebook",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": {
+								"value": "@pipeline().parameters.TransformationJob",
+								"type": "Expression"
+							},
+							"baseParameters": {
+								"folder": {
+									"value": "@pipeline().parameters.FolderName",
+									"type": "Expression"
+								},
+								"file": {
+									"value": "@pipeline().parameters.FileName",
+									"type": "Expression"
+								},
+								"partition": {
+									"value": "@pipeline().parameters.PartitionName",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "DatabricksLinkedService",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceHistoryId": {
+						"type": "int"
+					},
+					"TransformationJob": {
+						"type": "string"
+					},
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"PartitionName": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Stages"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StoredProcedurePipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "WriteTaskEnded",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "ExecuteStoredProcedure",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 3,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[Status].[WriteEnded]",
+							"storedProcedureParameters": {
+								"SourceHistoryId": {
+									"value": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"type": "Int64"
+								},
+								"PipelineRun": {
+									"value": {
+										"value": "@utcnow()",
+										"type": "Expression"
+									},
+									"type": "DateTimeOffset"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "ETLManagementLinkedService",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "ExecuteStoredProcedure",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "WriteTaskStarted",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.StoredProcedureName",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlManagedInstanceLinkedService",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"ServerName": {
+									"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+									"type": "Expression"
+								},
+								"DatabaseName": {
+									"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "WriteTaskStarted",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[Status].[WriteStoredProcedureStarted]",
+								"storedProcedureParameters": {
+									"PipelineId": {
+										"type": "Guid",
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										}
+									},
+									"PipelineRun": {
+										"type": "DateTimeOffset",
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										}
+									},
+									"StoredProcedureSourceId": {
+										"type": "Int32",
+										"value": {
+											"value": "@pipeline().parameters.Id",
+											"type": "Expression"
+										}
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ETLManagementDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": " "
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"Id": {
+						"type": "int"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/StoredProcedureToDatalakePipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Set StoredProcedureQuery",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "WriteTaskStarted",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "StoredProcedureQuery",
+							"value": {
+								"value": "@concat('EXECUTE ', activity('WriteTaskStarted').output.firstRow.SourceStoredProcedureName)",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Lookup Parameters",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Set StoredProcedureQuery",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:15:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[Status].[ReadStoredProcedureToDeltaLakeParameters]",
+								"storedProcedureParameters": {
+									"StoredProcedureToDeltaLakeId": {
+										"type": "Int32",
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.StoredProcedureToDeltaLakeSourceId",
+											"type": "Expression"
+										}
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ETLManagementDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": " "
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Loop through parameters",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup Parameters",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup Parameters').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Parameter has value",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@item().IsValue",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Query - Set StoredProcedureQueryTemp",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StoredProcedureQueryTemp",
+													"value": {
+														"value": "@variables('StoredProcedureQuery')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Query - Lookup Parameter Value",
+												"type": "Lookup",
+												"dependsOn": [
+													{
+														"activity": "Query - Set StoredProcedureQueryTemp",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.00:15:00",
+													"retry": 1,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlServerSource",
+														"sqlReaderQuery": {
+															"value": "@item().Query",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "SqlServerDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"ServerName": {
+																"value": "@item().QueryServerName",
+																"type": "Expression"
+															},
+															"DatabaseName": {
+																"value": "@item().QueryDatabaseName",
+																"type": "Expression"
+															},
+															"WindowsAuthUserName": {
+																"value": "@item().QueryUsername",
+																"type": "Expression"
+															},
+															"WindowsAuthPasswordInKeyVault": {
+																"value": "@item().QueryPasswordInKeyVault",
+																"type": "Expression"
+															},
+															"TableName": " "
+														}
+													},
+													"firstRowOnly": true
+												}
+											},
+											{
+												"name": "Query - Set StoredProcedureQuery",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Query - Lookup Parameter Value",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StoredProcedureQuery",
+													"value": {
+														"value": "@concat(variables('StoredProcedureQueryTemp'), if(variables('FirstParameterAdded'), ', ', ' '), '''', activity('Query - Lookup Parameter Value').output.firstRow.Value, '''')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Query - Set FirstParameterAdded",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Query - Set StoredProcedureQuery",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "FirstParameterAdded",
+													"value": true
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Value - Set StoredProcedureQueryTemp",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StoredProcedureQueryTemp",
+													"value": {
+														"value": "@variables('StoredProcedureQuery')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Value - Append to StoredProcedureQuery",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Value - Set StoredProcedureQueryTemp",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StoredProcedureQuery",
+													"value": {
+														"value": "@concat(variables('StoredProcedureQueryTemp'), if(variables('FirstParameterAdded'), ', ', ' '), '''', item().Value, '''')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Value - Set FirstParameterAdded",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Value - Append to StoredProcedureQuery",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "FirstParameterAdded",
+													"value": true
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Copy data to partition",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Copy data to current folder",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.03:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ParquetSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SelfServeDataLakeParquetDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"DataLakeName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/current')",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, '.parquet')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SelfServeDataLakeParquetDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"DataLakeName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/', activity('WriteTaskStarted').output.firstRow.PartitionName)",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, if(equals(activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix, ''), '', concat('_', activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix)), '.parquet')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "WriteTaskEnded",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Copy data to partition",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:15:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[Status].[WriteStoredProcedureToDeltaLakeEnded]",
+							"storedProcedureParameters": {
+								"PipelineRunID": {
+									"value": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"type": "Guid"
+								},
+								"PipelineRun": {
+									"value": {
+										"value": "@utcNow()",
+										"type": "Expression"
+									},
+									"type": "Datetimeoffset"
+								},
+								"SourceHistoryID": {
+									"value": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"type": "Int64"
+								},
+								"StoredProcedureToDeltaLakeSourceId": {
+									"value": {
+										"value": "@pipeline().parameters.Id",
+										"type": "Expression"
+									},
+									"type": "Int64"
+								},
+								"PartitionName": {
+									"value": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"FilePartitionSuffix": {
+									"value": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"Query": {
+									"value": {
+										"value": "@variables('StoredProcedureQuery')",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"RowsCopied": {
+									"value": {
+										"value": "@activity('Copy data to current folder').output.rowsCopied",
+										"type": "Expression"
+									},
+									"type": "Int32"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "ETLManagementLinkedService",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Copy data to current folder",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Loop through parameters",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.03:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@variables('StoredProcedureQuery')",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "ParquetSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "ParquetWriteSettings"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SqlServerDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"ServerName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+										"type": "Expression"
+									},
+									"DatabaseName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+										"type": "Expression"
+									},
+									"WindowsAuthUserName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+										"type": "Expression"
+									},
+									"WindowsAuthPasswordInKeyVault": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+										"type": "Expression"
+									},
+									"TableName": " "
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SelfServeDataLakeParquetDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"DataLakeName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/current')",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, '.parquet')",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "WriteTaskStarted",
+						"description": "WriteStoredProcedureToDeltaLakeStarted",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:15:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[Status].[WriteStoredProcedureToDeltaLakeStarted]",
+								"storedProcedureParameters": {
+									"PipelineId": {
+										"type": "Guid",
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										}
+									},
+									"PipelineRun": {
+										"type": "DateTimeOffset",
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										}
+									},
+									"StoredProcedureToDeltaLakeSourceId": {
+										"type": "Int32",
+										"value": {
+											"value": "@pipeline().parameters.Id",
+											"type": "Expression"
+										}
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ETLManagementDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": " "
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"Id": {
+						"type": "int"
+					}
+				},
+				"variables": {
+					"StoredProcedureQuery": {
+						"type": "String"
+					},
+					"FirstParameterAdded": {
+						"type": "Boolean"
+					},
+					"StoredProcedureQueryTemp": {
+						"type": "String"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TestIntegrationRuntimePipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "IfRuntimeIsSelfHosted",
+						"type": "IfCondition",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(pipeline().parameters.runtime, 'SelfHosted')",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "GetServerName",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.00:15:00",
+										"retry": 1,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlServerSource",
+											"sqlReaderQuery": " SELECT CONCAT('ADF has successfully retrieved the servername from ', @@SERVERNAME, '- the SQL Server linked service that runs on the self-hosted integration runtime') AS [Message]",
+											"queryTimeout": "00:15:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "SqlServerDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"ServerName": {
+													"value": "@pipeline().parameters.ServerName",
+													"type": "Expression"
+												},
+												"DatabaseName": {
+													"value": "@pipeline().parameters.DatabaseName",
+													"type": "Expression"
+												},
+												"WindowsAuthUserName": {
+													"value": "@pipeline().parameters.WindowsAuthUserName",
+													"type": "Expression"
+												},
+												"WindowsAuthPasswordInKeyVault": {
+													"value": "@pipeline().parameters.WindowsAuthPassword",
+													"type": "Expression"
+												},
+												"TableName": {
+													"value": "@pipeline().parameters.TableName",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "IfRuntimeIsAzureHosted",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "IfRuntimeIsSelfHosted",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(pipeline().parameters.Runtime, 'Azure')",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "GetDataLakeParquetFile",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.00:15:00",
+										"retry": 1,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ParquetSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"dataset": {
+											"referenceName": "DataLakeParquetDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"FolderName": {
+													"value": "@pipeline().parameters.FolderName",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "@pipeline().parameters.FileName",
+													"type": "Expression"
+												}
+											}
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"Runtime": {
+						"type": "string",
+						"defaultValue": "SelfHosted"
+					},
+					"ServerName": {
+						"type": "string",
+						"defaultValue": "END-BPSQ07-VS01\\INSTANCE01"
+					},
+					"DatabaseName": {
+						"type": "string",
+						"defaultValue": "Next_DSS"
+					},
+					"WindowsAuthUserName": {
+						"type": "string",
+						"defaultValue": "Next-PLC\\Admin-BIS-DBA"
+					},
+					"WindowsAuthPassword": {
+						"type": "string",
+						"defaultValue": "AdminBISDBA"
+					},
+					"TableName": {
+						"type": "string",
+						"defaultValue": "[[iwdba].[sale_item]"
+					},
+					"FolderName": {
+						"type": "string",
+						"defaultValue": "raw/formatted/bis_admin/sla/parquet/current"
+					},
+					"FileName": {
+						"type": "string",
+						"defaultValue": "sla_results_summary.parquet"
+					}
+				},
+				"folder": {
+					"name": "Test/Infrastructure"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UnzipSubPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "UnzipFile",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "BinarySource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": false,
+									"deleteFilesAfterCompletion": false
+								},
+								"formatSettings": {
+									"type": "BinaryReadSettings",
+									"compressionProperties": {
+										"type": "ZipDeflateReadSettings",
+										"preserveZipFileNameAsFolder": false
+									}
+								}
+							},
+							"sink": {
+								"type": "BinarySink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": "PreserveHierarchy"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "DataLakeBinaryZipSource",
+								"type": "DatasetReference",
+								"parameters": {
+									"DataLakeName": {
+										"value": "@pipeline().parameters.SourceDataLakeName",
+										"type": "Expression"
+									},
+									"FileSystem": {
+										"value": "@pipeline().parameters.SourceFileSystem",
+										"type": "Expression"
+									},
+									"Directory": {
+										"value": "@pipeline().parameters.SourceDirectory",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@pipeline().parameters.SourceFileName",
+										"type": "Expression"
+									},
+									"CompressionType": {
+										"value": "@pipeline().parameters.CompressionType",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DataLakeBinaryUnzip",
+								"type": "DatasetReference",
+								"parameters": {
+									"DataLakeName": {
+										"value": "@pipeline().parameters.DestinationDataLakeName",
+										"type": "Expression"
+									},
+									"FileSystem": {
+										"value": "@pipeline().parameters.DestinationFileSystem",
+										"type": "Expression"
+									},
+									"Directory": {
+										"value": "@pipeline().parameters.DestinationDirectory",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"SourceDataLakeName": {
+						"type": "string"
+					},
+					"SourceFileSystem": {
+						"type": "string"
+					},
+					"SourceDirectory": {
+						"type": "string"
+					},
+					"SourceFileName": {
+						"type": "string"
+					},
+					"DestinationDataLakeName": {
+						"type": "string"
+					},
+					"DestinationFileSystem": {
+						"type": "string"
+					},
+					"DestinationDirectory": {
+						"type": "string"
+					},
+					"CompressionType": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Stages"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/WaitForTriggerLandingPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "WriteTaskStarted",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:15:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[Status].[WriteMoveLandingToDataLakeStarted]",
+								"storedProcedureParameters": {
+									"MoveLandingToDataLakeID": {
+										"type": "Int32",
+										"value": {
+											"value": "@pipeline().parameters.Id",
+											"type": "Expression"
+										}
+									},
+									"PipelineId": {
+										"type": "Guid",
+										"value": {
+											"value": "@pipeline().RunId",
+											"type": "Expression"
+										}
+									},
+									"PipelineRun": {
+										"type": "DateTimeOffset",
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										}
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "ETLManagementDataset",
+								"type": "DatasetReference",
+								"parameters": {
+									"TableName": " "
+								}
+							}
+						}
+					},
+					{
+						"name": "Wait for Trigger",
+						"description": "Waits for a Trigger File to land in the landing area",
+						"type": "Until",
+						"dependsOn": [
+							{
+								"activity": "WriteTaskStarted",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(activity('Filter Metadata').output.FilteredItemsCount, 1)",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Get Metadata",
+									"type": "GetMetadata",
+									"dependsOn": [
+										{
+											"activity": "TimeoutPipeline",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.00:15:00",
+										"retry": 1,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DataLakeLandingBinaryDataset",
+											"type": "DatasetReference",
+											"parameters": {
+												"SourceFolderName": {
+													"value": "@activity('WriteTaskStarted').output.firstRow.SourceFolderName",
+													"type": "Expression"
+												},
+												"SourceFileName": {
+													"value": "@concat(activity('WriteTaskStarted').output.firstRow.SourceFileName,'.',activity('WriteTaskStarted').output.firstRow.Extension)",
+													"type": "Expression"
+												}
+											}
+										},
+										"fieldList": [
+											"childItems"
+										]
+									}
+								},
+								{
+									"name": "Filter Metadata",
+									"type": "Filter",
+									"dependsOn": [
+										{
+											"activity": "Get Metadata",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('Get Metadata').output.childItems",
+											"type": "Expression"
+										},
+										"condition": {
+											"value": "@equals(item().type, 'File')",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "TimeoutPipeline",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "TimeoutPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"TimeOut": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.WaitForTriggerTimeout",
+												"type": "Expression"
+											},
+											"PipeLineStartTime": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"timeout": "0.15:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"Id": {
+						"type": "int"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ConversationsAggregateDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "flatten2"
+						},
+						{
+							"name": "flatten3"
+						},
+						{
+							"name": "derivedColumn1"
+						},
+						{
+							"name": "sort1"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          results as (data as (interval as string, metrics as (metric as string, stats as (count as short, current as double, denominator as boolean, max as integer, min as integer, numerator as boolean, ratio as double, sum as integer, target as double))[])[], group as (conversationId as string, direction as string, mediaType as string, queueId as string, userId as string, wrapUpCode as string))[]",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(results, results),",
+						"     mapColumn(",
+						"          data = results.data,",
+						"          group = results.group",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten1 foldDown(unroll(data, data),",
+						"     mapColumn(",
+						"          interval = data.interval,",
+						"          metrics = data.metrics,",
+						"          group",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten2",
+						"flatten2 foldDown(unroll(metrics, metrics),",
+						"     mapColumn(",
+						"          conversationId = group.conversationId,",
+						"          direction = group.direction,",
+						"          mediaType = group.mediaType,",
+						"          queueId = group.queueId,",
+						"          userId = group.userId,",
+						"          wrapUpCode = group.wrapUpCode,",
+						"          metric = metrics.metric,",
+						"          count = metrics.stats.count,",
+						"          sum = metrics.stats.sum,",
+						"          current = metrics.stats.current,",
+						"          ratio = metrics.stats.ratio,",
+						"          interval",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten3",
+						"flatten3 derive(start_interval = split(interval,'/')[1],",
+						"          end_interval = split(interval,'/')[2]) ~> derivedColumn1",
+						"derivedColumn1 sort(asc(conversationId, false),",
+						"     asc(direction, false),",
+						"     asc(mediaType, false),",
+						"     asc(queueId, false),",
+						"     asc(userId, false),",
+						"     asc(wrapUpCode, false),",
+						"     asc(metric, false),",
+						"     asc(count, false),",
+						"     asc(sum, false),",
+						"     asc(ratio, false),",
+						"     asc(current, false),",
+						"     asc(start_interval, false),",
+						"     asc(end_interval, false)) ~> sort1",
+						"sort1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          conversationId,",
+						"          direction,",
+						"          mediaType,",
+						"          queueId,",
+						"          userId,",
+						"          wrapUpCode,",
+						"          metric,",
+						"          count,",
+						"          sum,",
+						"          current,",
+						"          ratio,",
+						"          interval,",
+						"          start_interval,",
+						"          end_interval",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ConversationsAttributesDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "filter1"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          address as string,",
+						"          divisions as (division as (id as string, selfUri as string), entities as (id as string, selfUri as string)[])[],",
+						"          endTime as string,",
+						"          id as string,",
+						"          participants as (address as string, alertingTimeoutMs as short, ani as string, aniName as string, attributes as ({Attrib.AccountNo} as string, {Attrib.Ani} as long, {Attrib.CalledAddress} as long, {Attrib.ConversationId} as string, {Attrib.Country} as string, {Attrib.DPAIVRStatus} as string, {Attrib.InitialLoadType} as short, {Attrib.IntReportGroup} as string, {Attrib.IsDpaPresented} as boolean, {Attrib.IsValidAccount} as boolean, {Attrib.IsValidDOB} as boolean, {Attrib.IsValidPostCode} as boolean, {Attrib.Language} as string, {Attrib.OriginalAni} as long, {Attrib.QueueId} as string, {Attrib.UTC_Offset} as boolean, CWC_allowACD as boolean, {Callback.CallsInQ} as short, {Info.CCxDPASuccess} as string, ZD_SearchType as string, ZD_SearchValue as integer, {Zen.CreateTicket} as string, {Zen.GetTicketByUserId} as string, {Zen.GetUserByANI} as string, {Zen.UpdateTicketDetails} as string, {info.GetLWTbyQueueSuccess} as string, {ivr.Priority} as short), callbacks as string[], calls as (afterCallWorkRequired as boolean, confined as boolean, connectedTime as string, direction as string, disconnectReasons as (code as short, phrase as string, type as string)[], disconnectType as string, disconnectedTime as string, held as boolean, id as string, initialState as string, muted as boolean, other as (addressDisplayable as string, addressNormalized as string, addressRaw as string, name as string, nameRaw as string), peerId as string, provider as string, recording as boolean, recordingState as string, segments as (disconnectType as string, endTime as string, howEnded as string, startTime as string, type as string)[], self as (addressDisplayable as string, addressNormalized as string, addressRaw as string, name as string, nameRaw as string), startAlertingTime as string, state as string)[], chats as string[], cobrowsesessions as string[], connectedTime as string, conversationRoutingData as (priority as short, queue as (id as string, selfUri as string), scoredAgents as string[], skills as string[]), dnis as string, emails as string[], endAcwTime as string, endTime as string, externalContactId as string, id as string, mediaRoles as string[], messages as string[], name as string, participantType as string, purpose as string, queueId as string, queueName as string, screenRecordingState as string, screenshares as string[], socialExpressions as string[], startAcwTime as string, startTime as string, userId as string, userUri as string, videos as string[], wrapup as (code as string, durationSeconds as short, endTime as string, name as string, tags as string[]), wrapupPrompt as string, wrapupRequired as boolean, wrapupTimeoutMs as integer)[],",
+						"          recentTransfers as (dateIssued as string, destination as (address as string, userId as string), id as string, initiator as (userId as string), state as string, transferType as string)[],",
+						"          recordingState as string,",
+						"          selfUri as string,",
+						"          startTime as string",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(participants, participants),",
+						"     mapColumn(",
+						"          UTC_Offset = participants.attributes.{Attrib.UTC_Offset},",
+						"          ZD_SearchType = participants.attributes.ZD_SearchType,",
+						"          GetUserByANI = participants.attributes.{Zen.GetUserByANI},",
+						"          CallsInQ = participants.attributes.{Callback.CallsInQ},",
+						"          IsDpaPresented = participants.attributes.{Attrib.IsDpaPresented},",
+						"          ConversationId = participants.attributes.{Attrib.ConversationId},",
+						"          DPAIVRStatus = participants.attributes.{Attrib.DPAIVRStatus},",
+						"          ZD_SearchValue = participants.attributes.ZD_SearchValue,",
+						"          CCxDPASuccess = participants.attributes.{Info.CCxDPASuccess},",
+						"          Country = participants.attributes.{Attrib.Country},",
+						"          language = participants.attributes.{Attrib.Language},",
+						"          QueueId = participants.attributes.{Attrib.QueueId},",
+						"          GetLWTbyQueueSuccess = participants.attributes.{info.GetLWTbyQueueSuccess},",
+						"          UpdateTicketDetails = participants.attributes.{Zen.UpdateTicketDetails},",
+						"          AccountNo = participants.attributes.{Attrib.AccountNo},",
+						"          IntReportGroup = participants.attributes.{Attrib.IntReportGroup}",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten1 filter(!isNull(ConversationId)) ~> filter1",
+						"filter1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     filePattern:(concat($FileName,'.parquet')),",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ConversationsDetailsDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "sort1"
+						},
+						{
+							"name": "flatten2"
+						},
+						{
+							"name": "flatten3"
+						},
+						{
+							"name": "flatten4"
+						},
+						{
+							"name": "flatten5"
+						},
+						{
+							"name": "flatten6"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          conversations as (conversationEnd as string, conversationId as string, conversationStart as string, divisionIds as string[], mediaStatsMinConversationMos as double, mediaStatsMinConversationRFactor as double, originatingDirection as string, participants as (participantId as string, participantName as string, purpose as string, sessions as (activeSkillIds as string[], addressFrom as string, addressOther as string, addressSelf as string, addressTo as string, agentBullseyeRing as boolean, ani as string, direction as string, dnis as string, edgeId as string, flow as (endingLanguage as string, entryReason as string, entryType as string, exitReason as string, flowId as string, flowName as string, flowType as string, flowVersion as double, startingLanguage as string, transferTargetAddress as string, transferTargetName as string, transferType as string), flowInType as string, mediaEndpointStats as (codecs as string[], discardedPackets as integer, eventTime as string, maxLatencyMs as integer, minMos as double, minRFactor as double, receivedPackets as integer)[], mediaType as string, metrics as (emitDate as string, name as string, value as integer)[], peerId as string, protocolCallId as string, provider as string, recording as boolean, remote as string, remoteNameDisplayable as string, requestedRoutings as string[], routingRing as boolean, segments as (conference as boolean, disconnectType as string, errorCode as string, q850ResponseCodes as integer[], queueId as string, requestedLanguageId as string, requestedRoutingSkillIds as string[], segmentEnd as string, segmentStart as string, segmentType as string, sipResponseCodes as integer[], subject as string, wrapUpCode as string)[], selectedAgentId as string, sessionDnis as string, sessionId as string, usedRouting as string)[], userId as string)[])[],",
+						"          totalHits as integer",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(conversations, conversations),",
+						"     mapColumn(",
+						"          conversationId = conversations.conversationId,",
+						"          conversationStart = conversations.conversationStart,",
+						"          conversationEnd = conversations.conversationEnd,",
+						"          divisionIds = conversations.divisionIds,",
+						"          originatingDirection = conversations.originatingDirection,",
+						"          participants = conversations.participants",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten6 sort(asc(conversationId, false),",
+						"     asc(conversationStart, false),",
+						"     asc(conversationEnd, false),",
+						"     asc(divisionIds, false),",
+						"     asc(originatingDirection, false),",
+						"     asc(participantId, false),",
+						"     asc(participantName, false)) ~> sort1",
+						"flatten1 foldDown(unroll(divisionIds, divisionIds),",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participants",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten2",
+						"flatten2 foldDown(unroll(participants, participants),",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participantId = participants.participantId,",
+						"          participantName = participants.participantName,",
+						"          purpose = participants.purpose,",
+						"          userId = participants.userId,",
+						"          sessions = participants.sessions",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten3",
+						"flatten3 foldDown(unroll(sessions, sessions),",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participantId,",
+						"          participantName,",
+						"          purpose,",
+						"          userId,",
+						"          direction = sessions.direction,",
+						"          mediaType = sessions.mediaType,",
+						"          provider = sessions.provider,",
+						"          sessionId = sessions.sessionId,",
+						"          dnis = sessions.dnis,",
+						"          entryType = sessions.flow.entryType,",
+						"          entryReason = sessions.flow.entryReason,",
+						"          flowId = sessions.flow.flowId,",
+						"          flowName = sessions.flow.flowName,",
+						"          flowType = sessions.flow.flowType,",
+						"          startingLanguage = sessions.flow.startingLanguage,",
+						"          endingLanguage = sessions.flow.endingLanguage,",
+						"          exitReason = sessions.flow.exitReason,",
+						"          selectedAgentId = sessions.selectedAgentId,",
+						"          transferTargetAddress = sessions.flow.transferTargetAddress,",
+						"          transferTargetName = sessions.flow.transferTargetName,",
+						"          transferType = sessions.flow.transferType,",
+						"          flowInType = sessions.flowInType,",
+						"          remoteNameDisplayable = sessions.remoteNameDisplayable,",
+						"          addressTo = sessions.addressTo,",
+						"          metrics = sessions.metrics,",
+						"          segments = sessions.segments",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten4",
+						"flatten4 foldDown(unroll(metrics, metrics),",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participantId,",
+						"          participantName,",
+						"          purpose,",
+						"          userId,",
+						"          direction,",
+						"          mediaType,",
+						"          provider,",
+						"          sessionId,",
+						"          dnis,",
+						"          entryType,",
+						"          entryReason,",
+						"          flowId,",
+						"          flowName,",
+						"          flowType,",
+						"          startingLanguage,",
+						"          endingLanguage,",
+						"          exitReason,",
+						"          selectedAgentId,",
+						"          transferTargetAddress,",
+						"          transferTargetName,",
+						"          transferType,",
+						"          flowInType,",
+						"          remoteNameDisplayable,",
+						"          addressTo,",
+						"          name = metrics.name,",
+						"          value = metrics.value,",
+						"          segments",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten5",
+						"flatten5 foldDown(unroll(segments, segments),",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participantId,",
+						"          participantName,",
+						"          purpose,",
+						"          userId,",
+						"          direction,",
+						"          mediaType,",
+						"          provider,",
+						"          sessionId,",
+						"          dnis,",
+						"          entryType,",
+						"          entryReason,",
+						"          flowId,",
+						"          flowName,",
+						"          flowType,",
+						"          startingLanguage,",
+						"          endingLanguage,",
+						"          exitReason,",
+						"          selectedAgentId,",
+						"          transferTargetAddress,",
+						"          transferTargetName,",
+						"          transferType,",
+						"          flowInType,",
+						"          remoteNameDisplayable,",
+						"          addressTo,",
+						"          name,",
+						"          value,",
+						"          conference = segments.conference,",
+						"          queueId = segments.queueId,",
+						"          segmentStart = segments.segmentStart,",
+						"          segmentType = segments.segmentType,",
+						"          segmentEnd = segments.segmentEnd,",
+						"          disconnectType = segments.disconnectType,",
+						"          subject = segments.subject",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten6",
+						"sort1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          conversationId,",
+						"          conversationStart,",
+						"          conversationEnd,",
+						"          divisionIds,",
+						"          originatingDirection,",
+						"          participantId,",
+						"          participantName,",
+						"          purpose,",
+						"          userId,",
+						"          direction,",
+						"          mediaType,",
+						"          provider,",
+						"          sessionId,",
+						"          dnis,",
+						"          entryType,",
+						"          entryReason,",
+						"          flowId,",
+						"          flowName,",
+						"          flowType,",
+						"          startingLanguage,",
+						"          endingLanguage,",
+						"          exitReason,",
+						"          selectedAgentId,",
+						"          transferTargetAddress,",
+						"          transferTargetName,",
+						"          transferType,",
+						"          flowInType,",
+						"          remoteNameDisplayable,",
+						"          addressTo,",
+						"          name,",
+						"          value,",
+						"          conference,",
+						"          queueId,",
+						"          segmentStart,",
+						"          segmentType,",
+						"          segmentEnd,",
+						"          disconnectType,",
+						"          subject",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ConversationsIdDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "aggregate1"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          results as (data as (interval as string, metrics as (metric as string, stats as (count as short, max as long, min as long, sum as long))[])[], group as (conversationId as string, mediaType as string))[]",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(results, results),",
+						"     mapColumn(",
+						"          conversationId = results.group.conversationId",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten1 aggregate(groupBy(conversationId),",
+						"     count = count(conversationId)) ~> aggregate1",
+						"aggregate1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     filePattern:(concat($FileName,'.parquet')),",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          conversationId",
+						"     ),",
+						"     partitionBy('roundRobin', 50)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EvaluationAggregateDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FlattenJson"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string (\"original/genesys/v2/evaluation_aggregate_data/2022/06/08/\"),",
+						"     FileName as string (\"evaluation_aggregate_data*.json\")",
+						"}",
+						"source(output(",
+						"          results as (data as (interval as string, metrics as (metric as string, stats as (count as boolean))[])[], group as (conversationId as string, evaluationId as string))[]",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(results, results),",
+						"     mapColumn(",
+						"          conversationId = results.group.conversationId,",
+						"          evaluationId = results.group.evaluationId",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> FlattenJson",
+						"FlattenJson sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EvaluationConversationsDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten2"
+						},
+						{
+							"name": "sort1"
+						},
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "flatten3"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          agent as (id as string, selfUri as string),",
+						"          agentHasRead as boolean,",
+						"          answers as (anyFailedKillQuestions as boolean, comments as string, questionGroupScores as (markedNA as boolean, maxTotalCriticalScore as double, maxTotalCriticalScoreUnweighted as double, maxTotalNonCriticalScore as double, maxTotalNonCriticalScoreUnweighted as double, maxTotalScore as double, maxTotalScoreUnweighted as double, questionGroupId as string, questionScores as (answerId as string, comments as string, failedKillQuestion as boolean, markedNA as boolean, questionId as string, score as integer)[], totalCriticalScore as double, totalCriticalScoreUnweighted as double, totalNonCriticalScore as double, totalNonCriticalScoreUnweighted as double, totalScore as double, totalScoreUnweighted as double)[], totalCriticalScore as double, totalNonCriticalScore as double, totalScore as double),",
+						"          assignedDate as string,",
+						"          authorizedActions as string[],",
+						"          changedDate as string,",
+						"          conversation as (id as string, selfUri as string),",
+						"          conversationDate as string,",
+						"          conversationEndDate as string,",
+						"          evaluationForm as (id as string, name as string, published as boolean, selfUri as string),",
+						"          evaluator as (id as string, selfUri as string),",
+						"          id as string,",
+						"          mediaType as string[],",
+						"          neverRelease as boolean,",
+						"          queue as (autoAnswerOnly as boolean, id as string, selfUri as string),",
+						"          releaseDate as string,",
+						"          rescore as boolean,",
+						"          selfUri as string,",
+						"          status as string",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"flatten1 foldDown(unroll(questionScores, questionScores),",
+						"     mapColumn(",
+						"          conversation_id,",
+						"          evaluationForm_id,",
+						"          name,",
+						"          selfUri,",
+						"          evaluator_id,",
+						"          agent_id,",
+						"          status,",
+						"          answers_totalScore,",
+						"          answers_totalCriticalScore,",
+						"          answers_totalNonCriticalScore,",
+						"          questionGroupId,",
+						"          totalScore,",
+						"          maxTotalScore,",
+						"          markedNA,",
+						"          totalCriticalScore,",
+						"          maxTotalCriticalScore,",
+						"          totalNonCriticalScore,",
+						"          maxTotalNonCriticalScore,",
+						"          totalScoreUnweighted,",
+						"          maxTotalScoreUnweighted,",
+						"          totalCriticalScoreUnweighted,",
+						"          maxTotalCriticalScoreUnweighted,",
+						"          totalNonCriticalScoreUnweighted,",
+						"          maxTotalNonCriticalScoreUnweighted,",
+						"          questionId = questionScores.questionId,",
+						"          answerId = questionScores.answerId,",
+						"          score = questionScores.score,",
+						"          {_markedNA} = questionScores.markedNA,",
+						"          comments = questionScores.comments,",
+						"          agentHasRead,",
+						"          releaseDate,",
+						"          assignedDate,",
+						"          changedDate,",
+						"          queue_id,",
+						"          conversationDate,",
+						"          conversationEndDate,",
+						"          mediaType",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten2",
+						"flatten3 sort(asc(conversation_id, false),",
+						"     asc(evaluationForm_id, false),",
+						"     asc(name, false),",
+						"     asc(selfUri, false),",
+						"     asc(evaluator_id, false),",
+						"     asc(agent_id, false),",
+						"     asc(status, false),",
+						"     asc(conversationDate, false),",
+						"     asc(conversationEndDate, false)) ~> sort1",
+						"JsonSource foldDown(unroll(answers.questionGroupScores, answers.questionGroupScores),",
+						"     mapColumn(",
+						"          conversation_id = conversation.id,",
+						"          evaluationForm_id = evaluationForm.id,",
+						"          name = evaluationForm.name,",
+						"          selfUri = evaluationForm.selfUri,",
+						"          evaluator_id = evaluator.id,",
+						"          agent_id = agent.id,",
+						"          status,",
+						"          answers_totalScore = answers.totalScore,",
+						"          answers_totalCriticalScore = answers.totalCriticalScore,",
+						"          answers_totalNonCriticalScore = answers.totalNonCriticalScore,",
+						"          questionGroupId = answers.questionGroupScores.questionGroupId,",
+						"          totalScore = answers.questionGroupScores.totalScore,",
+						"          maxTotalScore = answers.questionGroupScores.maxTotalScore,",
+						"          markedNA = answers.questionGroupScores.markedNA,",
+						"          totalCriticalScore = answers.questionGroupScores.totalCriticalScore,",
+						"          maxTotalCriticalScore = answers.questionGroupScores.maxTotalCriticalScore,",
+						"          totalNonCriticalScore = answers.questionGroupScores.totalNonCriticalScore,",
+						"          maxTotalNonCriticalScore = answers.questionGroupScores.maxTotalNonCriticalScore,",
+						"          totalScoreUnweighted = answers.questionGroupScores.totalScoreUnweighted,",
+						"          maxTotalScoreUnweighted = answers.questionGroupScores.maxTotalScoreUnweighted,",
+						"          totalCriticalScoreUnweighted = answers.questionGroupScores.totalCriticalScoreUnweighted,",
+						"          maxTotalCriticalScoreUnweighted = answers.questionGroupScores.maxTotalCriticalScoreUnweighted,",
+						"          totalNonCriticalScoreUnweighted = answers.questionGroupScores.totalNonCriticalScoreUnweighted,",
+						"          maxTotalNonCriticalScoreUnweighted = answers.questionGroupScores.maxTotalNonCriticalScoreUnweighted,",
+						"          questionScores = answers.questionGroupScores.questionScores,",
+						"          agentHasRead,",
+						"          releaseDate,",
+						"          assignedDate,",
+						"          changedDate,",
+						"          queue_id = queue.id,",
+						"          mediaType,",
+						"          conversationDate,",
+						"          conversationEndDate",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten2 foldDown(unroll(mediaType, mediaType),",
+						"     mapColumn(",
+						"          conversation_id,",
+						"          evaluationForm_id,",
+						"          name,",
+						"          selfUri,",
+						"          evaluator_id,",
+						"          agent_id,",
+						"          status,",
+						"          answers_totalScore,",
+						"          answers_totalCriticalScore,",
+						"          answers_totalNonCriticalScore,",
+						"          questionGroupId,",
+						"          totalScore,",
+						"          maxTotalScore,",
+						"          markedNA,",
+						"          totalCriticalScore,",
+						"          maxTotalCriticalScore,",
+						"          totalNonCriticalScore,",
+						"          maxTotalNonCriticalScore,",
+						"          totalScoreUnweighted,",
+						"          maxTotalScoreUnweighted,",
+						"          totalCriticalScoreUnweighted,",
+						"          maxTotalCriticalScoreUnweighted,",
+						"          totalNonCriticalScoreUnweighted,",
+						"          maxTotalNonCriticalScoreUnweighted,",
+						"          questionId,",
+						"          answerId,",
+						"          score,",
+						"          {_markedNA},",
+						"          comments,",
+						"          agentHasRead,",
+						"          releaseDate,",
+						"          assignedDate,",
+						"          changedDate,",
+						"          queue_id,",
+						"          conversationDate,",
+						"          conversationEndDate,",
+						"          mediaType",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten3",
+						"sort1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          conversation_id,",
+						"          evaluationForm_id,",
+						"          name,",
+						"          selfUri,",
+						"          evaluator_id,",
+						"          agent_id,",
+						"          status,",
+						"          answers_totalScore,",
+						"          answers_totalCriticalScore,",
+						"          answers_totalNonCriticalScore,",
+						"          questionGroupId,",
+						"          totalScore,",
+						"          maxTotalScore,",
+						"          markedNA,",
+						"          totalCriticalScore,",
+						"          maxTotalCriticalScore,",
+						"          totalNonCriticalScore,",
+						"          maxTotalNonCriticalScore,",
+						"          totalScoreUnweighted,",
+						"          maxTotalScoreUnweighted,",
+						"          totalCriticalScoreUnweighted,",
+						"          maxTotalCriticalScoreUnweighted,",
+						"          totalNonCriticalScoreUnweighted,",
+						"          maxTotalNonCriticalScoreUnweighted,",
+						"          questionId,",
+						"          answerId,",
+						"          score,",
+						"          {_markedNA},",
+						"          comments,",
+						"          agentHasRead,",
+						"          releaseDate,",
+						"          assignedDate,",
+						"          changedDate,",
+						"          queue_id,",
+						"          conversationDate,",
+						"          conversationEndDate,",
+						"          mediaType",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EvaluationPublishedFormsDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination"
+						}
+					],
+					"transformations": [
+						{
+							"name": "sort1"
+						},
+						{
+							"name": "flatten2"
+						},
+						{
+							"name": "flatten1"
+						},
+						{
+							"name": "flatten3"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          contextId as string,",
+						"          id as string,",
+						"          modifiedDate as string,",
+						"          name as string,",
+						"          published as boolean,",
+						"          questionGroups as (defaultAnswersToHighest as boolean, defaultAnswersToNA as boolean, id as string, manualWeight as boolean, naEnabled as boolean, name as string, questions as (answerOptions as (id as string, text as string, value as integer)[], commentsRequired as boolean, helpText as string, id as string, isCritical as boolean, isKill as boolean, naEnabled as boolean, text as string, type as string)[], type as string, weight as double)[],",
+						"          selfUri as string,",
+						"          weightMode as string",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"flatten3 sort(asc(evaluations_id, false),",
+						"     asc(evaluations_name, false),",
+						"     asc(modifiedDate, false),",
+						"     asc(published, false)) ~> sort1",
+						"flatten1 foldDown(unroll(questions, questions),",
+						"     mapColumn(",
+						"          evaluations_id,",
+						"          evaluations_name,",
+						"          modifiedDate,",
+						"          published,",
+						"          contextId,",
+						"          id = questionGroups_id,",
+						"          name = questionGroups_name,",
+						"          type = questionGroups_type,",
+						"          defaultAnswersToHighest,",
+						"          defaultAnswersToNA,",
+						"          naEnabled,",
+						"          weight,",
+						"          manualWeight,",
+						"          questions_id = questions.id,",
+						"          text = questions.text,",
+						"          helpText = questions.helpText,",
+						"          {_type} = questions.type,",
+						"          {_naEnabled} = questions.naEnabled,",
+						"          commentsRequired = questions.commentsRequired,",
+						"          answerOptions = questions.answerOptions",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten2",
+						"JsonSource foldDown(unroll(questionGroups, questionGroups),",
+						"     mapColumn(",
+						"          evaluations_id = id,",
+						"          evaluations_name = name,",
+						"          modifiedDate,",
+						"          published,",
+						"          contextId,",
+						"          questionGroups_id = questionGroups.id,",
+						"          questionGroups_name = questionGroups.name,",
+						"          questionGroups_type = questionGroups.type,",
+						"          defaultAnswersToHighest = questionGroups.defaultAnswersToHighest,",
+						"          defaultAnswersToNA = questionGroups.defaultAnswersToNA,",
+						"          naEnabled = questionGroups.naEnabled,",
+						"          weight = questionGroups.weight,",
+						"          manualWeight = questionGroups.manualWeight,",
+						"          questions = questionGroups.questions",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten2 foldDown(unroll(answerOptions, answerOptions),",
+						"     mapColumn(",
+						"          evaluations_id,",
+						"          evaluations_name,",
+						"          modifiedDate,",
+						"          published,",
+						"          contextId,",
+						"          id,",
+						"          name,",
+						"          type,",
+						"          defaultAnswersToHighest,",
+						"          defaultAnswersToNA,",
+						"          naEnabled,",
+						"          weight,",
+						"          manualWeight,",
+						"          questions_id,",
+						"          text,",
+						"          helpText,",
+						"          {_type},",
+						"          {_naEnabled},",
+						"          commentsRequired,",
+						"          answerOptions_id = answerOptions.id,",
+						"          answerOptions_text = answerOptions.text,",
+						"          value = answerOptions.value",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten3",
+						"sort1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          evaluations_id,",
+						"          evaluations_name,",
+						"          modifiedDate,",
+						"          published,",
+						"          contextId,",
+						"          id,",
+						"          name,",
+						"          type,",
+						"          defaultAnswersToHighest,",
+						"          defaultAnswersToNA,",
+						"          naEnabled,",
+						"          weight,",
+						"          manualWeight,",
+						"          questions_id,",
+						"          text,",
+						"          helpText,",
+						"          {_type},",
+						"          {_naEnabled},",
+						"          commentsRequired,",
+						"          answerOptions_id,",
+						"          answerOptions_text,",
+						"          value",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EvaluationUserSearchDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource",
+							"description": "Import data from DataLakeLinkedService"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination",
+							"description": "Export data to GenericDataLakeParquetDataSet"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flattenResults"
+						},
+						{
+							"name": "flattenAddress"
+						},
+						{
+							"name": "flattenImage"
+						},
+						{
+							"name": "flattenLanguage"
+						},
+						{
+							"name": "flattenSkills"
+						},
+						{
+							"name": "join1"
+						},
+						{
+							"name": "join2"
+						},
+						{
+							"name": "flattenLocation"
+						},
+						{
+							"name": "join3"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string,",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          entities as (acdAutoAnswer as boolean, addresses as (address as string, countryCode as string, display as string, mediaType as string, type as string)[], chat as (jabberId as string), department as string, division as (id as string, name as string, selfUri as string), email as string, groups as (id as string, selfUri as string)[], id as string, images as (imageUri as string, resolution as string)[], languages as (id as string, languageUri as string, name as string, proficiency as double, selfUri as string, state as string)[], locations as (locationDefinition as (id as string, selfUri as string), notes as string)[], manager as (id as string, selfUri as string), name as string, primaryContactInfo as (address as string, display as string, mediaType as string, type as string)[], selfUri as string, skills as (id as string, name as string, proficiency as double, selfUri as string, skillUri as string, state as string)[], state as string, title as string, username as string, version as short)[],",
+						"          firstUri as string,",
+						"          lastUri as string,",
+						"          nextUri as string,",
+						"          pageCount as short,",
+						"          pageNumber as short,",
+						"          pageSize as short,",
+						"          previousUri as string,",
+						"          selfUri as string,",
+						"          total as short",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: false,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json'))\r",
+						")]) ~> JsonSource",
+						"JsonSource foldDown(unroll(entities),",
+						"     mapColumn(",
+						"          acdAutoAnswer = entities.acdAutoAnswer,",
+						"          addresses = entities.addresses,",
+						"          jabberId = entities.chat,",
+						"          department = entities.department,",
+						"          division = entities.division,",
+						"          email = entities.email,",
+						"          groups = entities.groups,",
+						"          mainId = entities.id,",
+						"          images = entities.images,",
+						"          languages = entities.languages,",
+						"          locations = entities.locations,",
+						"          manager = entities.manager,",
+						"          name = entities.name,",
+						"          primaryContactInfo = entities.primaryContactInfo,",
+						"          selfUri = entities.selfUri,",
+						"          skills = entities.skills,",
+						"          state = entities.state,",
+						"          title = entities.title,",
+						"          username = entities.username,",
+						"          version = entities.version",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenResults",
+						"flattenResults foldDown(unroll(addresses),",
+						"     mapColumn(",
+						"          address = addresses.address,",
+						"          mainId,",
+						"          countryCode = addresses.countryCode,",
+						"          display = addresses.display,",
+						"          addressMediaType = addresses.mediaType,",
+						"          addressType = addresses.type",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenAddress",
+						"flattenResults foldDown(unroll(images),",
+						"     mapColumn(",
+						"          imageUri = images.imageUri,",
+						"          mainId,",
+						"          resolution = images.resolution",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenImage",
+						"flattenResults foldDown(unroll(languages),",
+						"     mapColumn(",
+						"          department,",
+						"          title,",
+						"          email,",
+						"          name,",
+						"          mainId,",
+						"          languageId = languages.id,",
+						"          languageUri = languages.languageUri,",
+						"          languageName = languages.name,",
+						"          languageProficiency = languages.proficiency,",
+						"          languageSelfUri = languages.selfUri,",
+						"          languageState = languages.state,",
+						"          jabberId = jabberId.jabberId,",
+						"          divisionId = division.id,",
+						"          divisionName = division.name,",
+						"          divisionselfUri = division.selfUri,",
+						"          managerId = manager.id",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenLanguage",
+						"flattenResults foldDown(unroll(skills),",
+						"     mapColumn(",
+						"          skillsId = skills.id,",
+						"          mainId,",
+						"          skillsName = skills.name,",
+						"          proficiency = skills.proficiency,",
+						"          skillsselfUri = skills.selfUri,",
+						"          skillUri = skills.skillUri,",
+						"          skillsState = skills.state",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenSkills",
+						"flattenLanguage, flattenAddress join(flattenLanguage@mainId == flattenAddress@mainId,",
+						"     joinType:'outer',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> join1",
+						"join1, flattenSkills join(flattenLanguage@mainId == flattenSkills@mainId,",
+						"     joinType:'outer',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> join2",
+						"flattenResults foldDown(unroll(locations, locations),",
+						"     mapColumn(",
+						"          locationId = locations.locationDefinition.id,",
+						"          mainId,",
+						"          locationNotes = locations.notes",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flattenLocation",
+						"join2, flattenLocation join(flattenLanguage@mainId == flattenLocation@mainId,",
+						"     joinType:'outer',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> join3",
+						"join3 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     saveOrder: 1,",
+						"     mapColumn(",
+						"          department,",
+						"          title,",
+						"          email,",
+						"          name,",
+						"          languageId,",
+						"          languageUri,",
+						"          languageName,",
+						"          languageProficiency,",
+						"          languageSelfUri,",
+						"          languageState,",
+						"          jabberId,",
+						"          divisionId,",
+						"          divisionName,",
+						"          divisionselfUri,",
+						"          managerId,",
+						"          address,",
+						"          countryCode,",
+						"          display,",
+						"          addressMediaType,",
+						"          addressType,",
+						"          skillsId,",
+						"          skillsName,",
+						"          proficiency,",
+						"          skillsselfUri,",
+						"          skillUri,",
+						"          skillsState,",
+						"          locationId,",
+						"          locationNotes",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PublishedFormsDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination",
+							"description": "Export data to GenericDataLakeParquetDataSet"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten1"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string (\"\"),",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          entities as (contextId as string, id as string, modifiedDate as string, name as string, published as boolean, questionGroups as string[], selfUri as string, weightMode as string)[],",
+						"          firstUri as string,",
+						"          lastUri as string,",
+						"          pageCount as boolean,",
+						"          pageNumber as boolean,",
+						"          pageSize as short,",
+						"          selfUri as string,",
+						"          total as short",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(entities, entities),",
+						"     mapColumn(",
+						"          contextId = entities.contextId,",
+						"          id = entities.id,",
+						"          modifiedDate = entities.modifiedDate,",
+						"          name = entities.name,",
+						"          published = entities.published,",
+						"          questionGroups = entities.questionGroups,",
+						"          weightMode = entities.weightMode",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten1",
+						"flatten1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     mapColumn(",
+						"          contextId,",
+						"          id,",
+						"          modifiedDate,",
+						"          name,",
+						"          published,",
+						"          questionGroups,",
+						"          weightMode",
+						"     ),",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/QueuesDivisionviewsDataFlow')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"folder": {
+					"name": "ContactCentre/Genesys"
+				},
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"linkedService": {
+								"referenceName": "DataLakeLinkedService",
+								"type": "LinkedServiceReference"
+							},
+							"name": "JsonSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "GenericDataLakeParquetDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "ParquetDestination",
+							"description": "Export data to GenericDataLakeParquetDataSet"
+						}
+					],
+					"transformations": [
+						{
+							"name": "flatten",
+							"description": "Unrolling arrays from entities to entities with columns 'division, id, name, selfUri'"
+						}
+					],
+					"scriptLines": [
+						"parameters{",
+						"     FolderName as string (\"\"),",
+						"     FileName as string",
+						"}",
+						"source(output(",
+						"          entities as (division as (id as string, name as string, selfUri as string), id as string, name as string, selfUri as string)[],",
+						"          firstUri as string,",
+						"          lastUri as string,",
+						"          nextUri as string,",
+						"          pageCount as short,",
+						"          pageNumber as short,",
+						"          pageSize as short,",
+						"          previousUri as string,",
+						"          selfUri as string,",
+						"          total as short",
+						"     ),",
+						"     useSchema: false,",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     ignoreNoFilesFound: true,",
+						"     format: 'json',",
+						"     fileSystem: 'raw',",
+						"     documentForm: 'documentPerLine',",
+						"     backslashEscape: true,",
+						"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+						"JsonSource foldDown(unroll(entities, entities),",
+						"     mapColumn(",
+						"          queue_id = entities.id,",
+						"          queue_name = entities.name,",
+						"          division_id = entities.division.id,",
+						"          division_name = entities.division.name",
+						"     ),",
+						"     skipDuplicateMapInputs: false,",
+						"     skipDuplicateMapOutputs: false) ~> flatten",
+						"flatten sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'parquet',",
+						"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+						"     umask: 0022,",
+						"     preCommands: [],",
+						"     postCommands: [],",
+						"     partitionBy('hash', 1)) ~> ParquetDestination"
+					]
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}

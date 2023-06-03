@@ -1,0 +1,370 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "datalib-adf-dev01"
+		},
+		"AzureSqlManagedInstanceLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlManagedInstanceLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"ETLManagementLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'ETLManagementLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=az-bdsqdb03.database.windows.net;Initial Catalog=ETLManagement"
+		},
+		"NMonReportingSqlLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'NMonReportingSqlLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"SqlServerLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SqlServerLinkedService'",
+			"defaultValue": "Integrated Security=True;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"DataLakeBinaryDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().FileName"
+		},
+		"DataLakeBinaryDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().FolderName"
+		},
+		"DataLakeJsonDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().FileName"
+		},
+		"DataLakeJsonDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().FolderName"
+		},
+		"DataLakeLandingBinaryDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().SourceFileName"
+		},
+		"DataLakeLandingBinaryDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().SourceFolderName"
+		},
+		"ApiLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().BaseURL}"
+		},
+		"AzureBatchLinkedService_properties_typeProperties_batchUri": {
+			"type": "string",
+			"defaultValue": "https://euwbisbatchdev.westeurope.batch.azure.com"
+		},
+		"AzureBatchLinkedService_properties_typeProperties_poolName": {
+			"type": "string",
+			"defaultValue": "pool"
+		},
+		"AzureBatchLinkedService_properties_typeProperties_accountName": {
+			"type": "string",
+			"defaultValue": "euwbisbatchdev"
+		},
+		"AzureBatchLinkedServiceforAAS_properties_typeProperties_batchUri": {
+			"type": "string",
+			"defaultValue": "https://babisdeveuw.westeurope.batch.azure.com"
+		},
+		"AzureBatchLinkedServiceforAAS_properties_typeProperties_poolName": {
+			"type": "string",
+			"defaultValue": "poolaasrefresh"
+		},
+		"AzureBatchLinkedServiceforAAS_properties_typeProperties_accountName": {
+			"type": "string",
+			"defaultValue": "babisdeveuw"
+		},
+		"AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "BatchStorageConnectionString"
+		},
+		"AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "batchstorage-connectionstring"
+		},
+		"DataLakeLandingLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://bislandingdev.dfs.core.windows.net"
+		},
+		"DataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://bisdatalakedevv2.dfs.core.windows.net"
+		},
+		"DatabricksLinkedService_properties_typeProperties_workspaceResourceId": {
+			"type": "string",
+			"defaultValue": "/subscriptions/f7f99ac1-4ec0-4f26-b051-59786c2a0c6c/resourceGroups/DataAnalytics-DBK-RG-BIS-DEV-EUW/providers/Microsoft.Databricks/workspaces/DataAnalytics-DBK-BIS-DEV-EUW"
+		},
+		"DatabricksLinkedService_properties_typeProperties_instancePoolId": {
+			"type": "string",
+			"defaultValue": "1108-102648-fish103-pool-tlgsdcj6"
+		},
+		"DatabricksLinkedService_properties_typeProperties_newClusterVersion": {
+			"type": "string",
+			"defaultValue": "12.2.x-scala2.12"
+		},
+		"FileSystemLinkedService_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "@{linkedService().FolderName}"
+		},
+		"FileSystemLinkedService_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "@{linkedService().WindowsAuthUserName}"
+		},
+		"GenericAzureDataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+		},
+		"KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://EUW-BIS-Keyvault-Dev.vault.azure.net/"
+		},
+		"SelfServeDataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+		},
+		"SqlServerLinkedService_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "@{linkedService().WindowsAuthUserName}"
+		},
+		"ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_Id": {
+			"type": "string",
+			"defaultValue": "15"
+		},
+		"ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_LogicAppUrl": {
+			"type": "string",
+			"defaultValue": "https://trggerfromadf.azurewebsites.net:443/api/triggerfromadf/triggers/manual/invoke?api-version=2022-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=X4AWHnY_RX0zpOtz7VWE1m-2CtWi5Mh_HZA0KHE4kKk"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI to storage account containing linked ARM templates"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Sas token to storage account containing linked ARM templates"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"NMonReportingSqlLinkedService_connectionString": {
+						"value": "[parameters('NMonReportingSqlLinkedService_connectionString')]"
+					},
+					"AzureSqlManagedInstanceLinkedService_connectionString": {
+						"value": "[parameters('AzureSqlManagedInstanceLinkedService_connectionString')]"
+					},
+					"ApiLinkedService_properties_typeProperties_url": {
+						"value": "[parameters('ApiLinkedService_properties_typeProperties_url')]"
+					},
+					"KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+						"value": "[parameters('KeyVaultLinkedService_properties_typeProperties_baseUrl')]"
+					},
+					"SelfServeDataLakeLinkedService_properties_typeProperties_url": {
+						"value": "[parameters('SelfServeDataLakeLinkedService_properties_typeProperties_url')]"
+					},
+					"AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName": {
+						"value": "[parameters('AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName')]"
+					},
+					"AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName": {
+						"value": "[parameters('AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName')]"
+					},
+					"DataLakeLandingLinkedService_properties_typeProperties_url": {
+						"value": "[parameters('DataLakeLandingLinkedService_properties_typeProperties_url')]"
+					},
+					"DataLakeLinkedService_properties_typeProperties_url": {
+						"value": "[parameters('DataLakeLinkedService_properties_typeProperties_url')]"
+					},
+					"DatabricksLinkedService_properties_typeProperties_workspaceResourceId": {
+						"value": "[parameters('DatabricksLinkedService_properties_typeProperties_workspaceResourceId')]"
+					},
+					"DatabricksLinkedService_properties_typeProperties_instancePoolId": {
+						"value": "[parameters('DatabricksLinkedService_properties_typeProperties_instancePoolId')]"
+					},
+					"DatabricksLinkedService_properties_typeProperties_newClusterVersion": {
+						"value": "[parameters('DatabricksLinkedService_properties_typeProperties_newClusterVersion')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_1",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_1.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"ETLManagementLinkedService_connectionString": {
+						"value": "[parameters('ETLManagementLinkedService_connectionString')]"
+					},
+					"SqlServerLinkedService_connectionString": {
+						"value": "[parameters('SqlServerLinkedService_connectionString')]"
+					},
+					"FileSystemLinkedService_properties_typeProperties_host": {
+						"value": "[parameters('FileSystemLinkedService_properties_typeProperties_host')]"
+					},
+					"FileSystemLinkedService_properties_typeProperties_userId": {
+						"value": "[parameters('FileSystemLinkedService_properties_typeProperties_userId')]"
+					},
+					"GenericAzureDataLakeLinkedService_properties_typeProperties_url": {
+						"value": "[parameters('GenericAzureDataLakeLinkedService_properties_typeProperties_url')]"
+					},
+					"SqlServerLinkedService_properties_typeProperties_userName": {
+						"value": "[parameters('SqlServerLinkedService_properties_typeProperties_userName')]"
+					},
+					"DataLakeBinaryDataset_properties_typeProperties_fileName": {
+						"value": "[parameters('DataLakeBinaryDataset_properties_typeProperties_fileName')]"
+					},
+					"DataLakeBinaryDataset_properties_typeProperties_folderPath": {
+						"value": "[parameters('DataLakeBinaryDataset_properties_typeProperties_folderPath')]"
+					},
+					"DataLakeJsonDataset_properties_typeProperties_fileName": {
+						"value": "[parameters('DataLakeJsonDataset_properties_typeProperties_fileName')]"
+					},
+					"DataLakeJsonDataset_properties_typeProperties_folderPath": {
+						"value": "[parameters('DataLakeJsonDataset_properties_typeProperties_folderPath')]"
+					},
+					"DataLakeLandingBinaryDataset_properties_typeProperties_fileName": {
+						"value": "[parameters('DataLakeLandingBinaryDataset_properties_typeProperties_fileName')]"
+					},
+					"DataLakeLandingBinaryDataset_properties_typeProperties_folderPath": {
+						"value": "[parameters('DataLakeLandingBinaryDataset_properties_typeProperties_folderPath')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'datalib-adf-dev01_ArmTemplate_0')]"
+			]
+		},
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_2",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_2.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"AzureBatchLinkedService_properties_typeProperties_batchUri": {
+						"value": "[parameters('AzureBatchLinkedService_properties_typeProperties_batchUri')]"
+					},
+					"AzureBatchLinkedService_properties_typeProperties_poolName": {
+						"value": "[parameters('AzureBatchLinkedService_properties_typeProperties_poolName')]"
+					},
+					"AzureBatchLinkedService_properties_typeProperties_accountName": {
+						"value": "[parameters('AzureBatchLinkedService_properties_typeProperties_accountName')]"
+					},
+					"AzureBatchLinkedServiceforAAS_properties_typeProperties_batchUri": {
+						"value": "[parameters('AzureBatchLinkedServiceforAAS_properties_typeProperties_batchUri')]"
+					},
+					"AzureBatchLinkedServiceforAAS_properties_typeProperties_poolName": {
+						"value": "[parameters('AzureBatchLinkedServiceforAAS_properties_typeProperties_poolName')]"
+					},
+					"AzureBatchLinkedServiceforAAS_properties_typeProperties_accountName": {
+						"value": "[parameters('AzureBatchLinkedServiceforAAS_properties_typeProperties_accountName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'datalib-adf-dev01_ArmTemplate_1')]"
+			]
+		},
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_3",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_3.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'datalib-adf-dev01_ArmTemplate_2')]"
+			]
+		},
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_4",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_4.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'datalib-adf-dev01_ArmTemplate_3')]"
+			]
+		},
+		{
+			"name": "datalib-adf-dev01_ArmTemplate_5",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_5.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_Id": {
+						"value": "[parameters('ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_Id')]"
+					},
+					"ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_LogicAppUrl": {
+						"value": "[parameters('ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_LogicAppUrl')]"
+					}
+				}
+			},
+			"dependsOn": [
+				"[resourceId('Microsoft.Resources/deployments', 'datalib-adf-dev01_ArmTemplate_4')]"
+			]
+		}
+	]
+}

@@ -1,0 +1,1167 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "datalib-adf-dev01"
+		},
+		"ETLManagementLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'ETLManagementLinkedService'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=az-bdsqdb03.database.windows.net;Initial Catalog=ETLManagement"
+		},
+		"SqlServerLinkedService_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SqlServerLinkedService'",
+			"defaultValue": "Integrated Security=True;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		},
+		"FileSystemLinkedService_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "@{linkedService().FolderName}"
+		},
+		"FileSystemLinkedService_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "@{linkedService().WindowsAuthUserName}"
+		},
+		"GenericAzureDataLakeLinkedService_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+		},
+		"SqlServerLinkedService_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "@{linkedService().WindowsAuthUserName}"
+		},
+		"DataLakeBinaryDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().FileName"
+		},
+		"DataLakeBinaryDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().FolderName"
+		},
+		"DataLakeJsonDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().FileName"
+		},
+		"DataLakeJsonDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().FolderName"
+		},
+		"DataLakeLandingBinaryDataset_properties_typeProperties_fileName": {
+			"type": "string",
+			"defaultValue": "@dataset().SourceFileName"
+		},
+		"DataLakeLandingBinaryDataset_properties_typeProperties_folderPath": {
+			"type": "string",
+			"defaultValue": "@dataset().SourceFolderName"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/ETLManagementLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('ETLManagementLinkedService_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FileSystemLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"WindowsAuthUserName": {
+						"type": "String"
+					},
+					"WindowsAuthPasswordInKeyVault": {
+						"type": "String"
+					},
+					"FolderName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "FileServer",
+				"typeProperties": {
+					"host": "[parameters('FileSystemLinkedService_properties_typeProperties_host')]",
+					"userId": "[parameters('FileSystemLinkedService_properties_typeProperties_userId')]",
+					"password": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "KeyVaultLinkedService",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "@{linkedService().WindowsAuthPasswordInKeyVault}",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/GenericAzureDataLakeLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"DataLakeName": {
+						"type": "string",
+						"defaultValue": "bisdatalakedevv2"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('GenericAzureDataLakeLinkedService_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AzureIntegrationRuntimeEUW",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SqlServerLinkedService')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"ServerName": {
+						"type": "string"
+					},
+					"DatabaseName": {
+						"type": "string"
+					},
+					"WindowsAuthUserName": {
+						"type": "string"
+					},
+					"WindowsAuthPasswordInKeyVault": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SqlServerLinkedService_connectionString')]",
+					"userName": "[parameters('SqlServerLinkedService_properties_typeProperties_userName')]",
+					"password": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "KeyVaultLinkedService",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "@linkedService().WindowsAuthPasswordInKeyVault",
+							"type": "Expression"
+						},
+						"secretVersion": ""
+					}
+				},
+				"connectVia": {
+					"referenceName": "SelfHostedIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/KeepOldestOrNewest')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "KeepOldestOrNewestFile",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Shared/bisparkADF/release/notebooks/KeepOldestOrNewestFile",
+							"baseParameters": {
+								"PathToFolder": {
+									"value": "@pipeline().parameters.PathToFolder",
+									"type": "Expression"
+								},
+								"FileName": {
+									"value": "@pipeline().parameters.FileName",
+									"type": "Expression"
+								},
+								"NameOrModified": {
+									"value": "@pipeline().parameters.NameOrModified",
+									"type": "Expression"
+								},
+								"OldestOrNewest": {
+									"value": "@pipeline().parameters.OldestOrNewest",
+									"type": "Expression"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "DatabricksLinkedService",
+							"type": "LinkedServiceReference",
+							"parameters": {
+								"MinWorkers": 1,
+								"MaxWorkers": 4
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"PathToFolder": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"NameOrModified": {
+						"type": "string"
+					},
+					"OldestOrNewest": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Stages"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TimeoutPipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Set Seconds",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Time Array",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "Seconds",
+							"value": {
+								"value": "@variables('TimeArray')[3]",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Minutes",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Time Array",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "Minutes",
+							"value": {
+								"value": "@variables('TimeArray')[2]",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Hours",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Time Array",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "Hours",
+							"value": {
+								"value": "@variables('TimeArray')[1]",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Days",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Time Array",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "Days",
+							"value": {
+								"value": "@variables('TimeArray')[0]",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set Time Array",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "TimeArray",
+							"value": {
+								"value": "@split(replace(pipeline().parameters.TimeOut,'.',':'),':')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set EndTime",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set Seconds",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Minutes",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Hours",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set Days",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "EndTime",
+							"value": {
+								"value": "@adddays(addhours(addminutes(addseconds(pipeline().parameters.PipeLineStartTime,int(variables('Seconds'))),int(variables('Minutes'))),int(variables('Hours'))),int(variables('Days')))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "CheckTimeout",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Set BoolTimeOut",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@variables('BoolTimeOut')",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "Stored procedure1",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[Status].[CreateADFError]",
+										"storedProcedureParameters": {
+											"ErrorMessage": {
+												"value": "ERROR: The configured timeout has been reached for the pipeline",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "ETLManagementLinkedService",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Set TicksEnd",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set EndTime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "TicksEnd",
+							"value": {
+								"value": "@string(ticks(variables('EndTime')))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set TicksNow",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set EndTime",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "TicksNow",
+							"value": {
+								"value": "@string(ticks(utcnow()))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Set BoolTimeOut",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Set TicksEnd",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Set TicksNow",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "BoolTimeOut",
+							"value": {
+								"value": "@greater(int(variables('TicksNow')),int(variables('TicksEnd')))",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"TimeOut": {
+						"type": "string"
+					},
+					"PipeLineStartTime": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"Days": {
+						"type": "String"
+					},
+					"Hours": {
+						"type": "String"
+					},
+					"Minutes": {
+						"type": "String"
+					},
+					"Seconds": {
+						"type": "String"
+					},
+					"TimeArray": {
+						"type": "Array"
+					},
+					"EndTime": {
+						"type": "String"
+					},
+					"TicksNow": {
+						"type": "String"
+					},
+					"TicksEnd": {
+						"type": "String"
+					},
+					"BoolTimeOut": {
+						"type": "Boolean"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ETLManagementLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ActiveBatchMonitoringDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlManagedInstanceLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ServerName": {
+							"value": "@dataset().servername",
+							"type": "Expression"
+						},
+						"DatabaseName": {
+							"value": "@dataset().databasename",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"servername": {
+						"type": "string"
+					},
+					"databasename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlMITable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "iwdba",
+					"table": "batch_monitoring"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDatabricksDeltaLakeDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureDatabricksDeltaLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SinkDatabaseName": {
+						"type": "string"
+					},
+					"SinkTableName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureDatabricksDeltaLakeDataset",
+				"typeProperties": {
+					"database": {
+						"value": "@dataset().SinkDatabaseName",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().SinkTableName",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSqlManagedInstanceDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlManagedInstanceLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ServerName": {
+							"value": "@dataset().ServerName",
+							"type": "Expression"
+						},
+						"DatabaseName": {
+							"value": "@dataset().DatabaseName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"ServerName": {
+						"type": "string"
+					},
+					"DatabaseName": {
+						"type": "string"
+					},
+					"TableName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlMITable",
+				"schema": [],
+				"typeProperties": {
+					"tableName": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeBinaryDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFSFile",
+				"typeProperties": {
+					"fileName": {
+						"value": "[parameters('DataLakeBinaryDataset_properties_typeProperties_fileName')]",
+						"type": "Expression"
+					},
+					"folderPath": {
+						"value": "[parameters('DataLakeBinaryDataset_properties_typeProperties_folderPath')]",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeBinaryUnzip')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "GenericAzureDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().DataLakeName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"DataLakeName": {
+						"type": "string"
+					},
+					"FileSystem": {
+						"type": "string"
+					},
+					"Directory": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().Directory",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().FileSystem",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/GenericAzureDataLakeLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeBinaryZipSource')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "GenericAzureDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().DataLakeName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"DataLakeName": {
+						"type": "string"
+					},
+					"FileSystem": {
+						"type": "string"
+					},
+					"Directory": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"CompressionType": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().Directory",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().FileSystem",
+							"type": "Expression"
+						}
+					},
+					"compression": {
+						"type": {
+							"value": "@dataset().CompressionType",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/GenericAzureDataLakeLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeDelimitedDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"HasHeader": {
+						"type": "bool"
+					},
+					"Delimiter": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": {
+						"value": "@dataset().Delimiter",
+						"type": "Expression"
+					},
+					"escapeChar": "\\",
+					"firstRowAsHeader": {
+						"value": "@dataset().HasHeader",
+						"type": "Expression"
+					},
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeJsonDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFSFile",
+				"typeProperties": {
+					"format": {
+						"type": "JsonFormat"
+					},
+					"fileName": {
+						"value": "[parameters('DataLakeJsonDataset_properties_typeProperties_fileName')]",
+						"type": "Expression"
+					},
+					"folderPath": {
+						"value": "[parameters('DataLakeJsonDataset_properties_typeProperties_folderPath')]",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeLandingBinaryDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLandingLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SourceFolderName": {
+						"type": "string"
+					},
+					"SourceFileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureBlobFSFile",
+				"typeProperties": {
+					"fileName": {
+						"value": "[parameters('DataLakeLandingBinaryDataset_properties_typeProperties_fileName')]",
+						"type": "Expression"
+					},
+					"folderPath": {
+						"value": "[parameters('DataLakeLandingBinaryDataset_properties_typeProperties_folderPath')]",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeNMonParquetDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"table": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@concat('original/nmon/staging/', dataset().table, '.parquet')",
+							"type": "Expression"
+						},
+						"fileSystem": "raw"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLakeParquetDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataLakeLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ETLManagementDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"TableName": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"tableName": {
+						"value": "@dataset().TableName",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ETLManagementLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FileSystemBinaryDataset')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "FileSystemLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"WindowsAuthUserName": {
+							"value": "@dataset().WindowsAuthUserName",
+							"type": "Expression"
+						},
+						"WindowsAuthPasswordInKeyVault": {
+							"value": "@dataset().WindowsAuthPasswordInKeyVault",
+							"type": "Expression"
+						},
+						"FolderName": {
+							"value": "@dataset().FolderName",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"FolderName": {
+						"type": "string"
+					},
+					"FileName": {
+						"type": "string"
+					},
+					"WindowsAuthUserName": {
+						"type": "string"
+					},
+					"WindowsAuthPasswordInKeyVault": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": {
+							"value": "@dataset().FileName",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/FileSystemLinkedService')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/GenericDataLakeExcelDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "GenericAzureDataLakeLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"DataLakeName": {
+							"value": "@dataset().datalakename",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"datalakename": {
+						"type": "string",
+						"defaultValue": "bisdatalakedevv2"
+					},
+					"filesystem": {
+						"type": "string",
+						"defaultValue": "raw"
+					},
+					"directory": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					},
+					"worksheetindex": {
+						"type": "string",
+						"defaultValue": "0"
+					},
+					"range": {
+						"type": "string",
+						"defaultValue": null
+					},
+					"nullvalue": {
+						"type": "string",
+						"defaultValue": null
+					},
+					"firstrowasheader": {
+						"type": "bool",
+						"defaultValue": true
+					}
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().directory",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().filesystem",
+							"type": "Expression"
+						}
+					},
+					"sheetIndex": {
+						"value": "@int(dataset().worksheetindex)",
+						"type": "Expression"
+					},
+					"range": {
+						"value": "@coalesce(dataset().range,'')",
+						"type": "Expression"
+					},
+					"firstRowAsHeader": true,
+					"nullValue": {
+						"value": "@coalesce(dataset().nullvalue,'')",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/GenericAzureDataLakeLinkedService')]"
+			]
+		}
+	]
+}
