@@ -1,0 +1,1083 @@
+{
+	"name": "ActiveBatchMonitoringPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEachCode",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "GetPlanCodes",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetPlanCodes').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "SwitchPlan",
+							"type": "Switch",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@item().plancodestatus",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "ActiveBatch",
+										"activities": [
+											{
+												"name": "SettingUpABVariables",
+												"type": "Lookup",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlMISource",
+														"sqlReaderStoredProcedureName": {
+															"value": "dbo.[Raise_Immediate_Callout_Check_AB]",
+															"type": "Expression"
+														},
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "ActiveBatchMonitoringDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"servername": {
+																"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+																"type": "Expression"
+															},
+															"databasename": {
+																"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+																"type": "Expression"
+															}
+														}
+													},
+													"firstRowOnly": false
+												}
+											},
+											{
+												"name": "CallLogicApps",
+												"type": "WebActivity",
+												"dependsOn": [
+													{
+														"activity": "EmailFrom",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailTo",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailSubject",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailText",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "SmsFrom",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "SmsTo",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "SmsMessage",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"url": {
+														"value": "@pipeline().parameters.LogicAppUrl",
+														"type": "Expression"
+													},
+													"method": "POST",
+													"body": {
+														"value": "{\n  \"smsfrom\": \"@{variables('smsfrom')}\",\n  \"smsto\": \"@{variables('smsto')}\",\n  \"smsmessage\": \"@{variables('smsmessage')}\",\n  \"emailfrom\": \"@{variables('emailfrom')}\",\n  \"emailto\": \"@{variables('emailto')}\",\n  \"emailsub\": \"@{variables('emailsub')}\",\n  \"emailtext\": \"@{variables('emailtext')}\"\n}",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "SmsMessage",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsmessage",
+													"value": {
+														"value": "@replace(replace(string(activity('SettingUpABVariables').output.value[0].failuresmsmessage),'\"',''),'\\','\\\\')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailSubject",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailsub",
+													"value": {
+														"value": "@string(activity('SettingUpABVariables').output.value[0].emailsub)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "SmsTo",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsto",
+													"value": {
+														"value": "@string(activity('SettingUpABVariables').output.value[0].phoneno)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailText",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailtext",
+													"value": {
+														"value": "@replace(replace(string(activity('SettingUpABVariables').output.value[0].emailtxt),'\"',''),'\\','\\\\')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailTo",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailto",
+													"value": {
+														"value": "@string(activity('SettingUpABVariables').output.value[0].emailto)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailFrom",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailfrom",
+													"value": {
+														"value": "@string(activity('SettingUpABVariables').output.value[0].failureemailfrom)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "SmsFrom",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpABVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsfrom",
+													"value": {
+														"value": "@string(activity('SettingUpABVariables').output.value[0].phoneno)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"value": "Split",
+										"activities": [
+											{
+												"name": "SettingUpSplitVariables",
+												"type": "Lookup",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlMISource",
+														"sqlReaderStoredProcedureName": {
+															"value": "[dbo].[Raise_Immediate_Callout_Check_split]",
+															"type": "Expression"
+														},
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "ActiveBatchMonitoringDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"servername": {
+																"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+																"type": "Expression"
+															},
+															"databasename": {
+																"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+																"type": "Expression"
+															}
+														}
+													}
+												}
+											},
+											{
+												"name": "SmsMessageSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsmessage",
+													"value": {
+														"value": "@replace(replace(string(activity('SettingUpSplitVariables').output.value[0].failuresmsmessage),'\"',''),'\\','\\\\')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailSubjectSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailsub",
+													"value": {
+														"value": "@string(activity('SettingUpSplitVariables').output.value[0].emailsub)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "SmsToSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsto",
+													"value": {
+														"value": "@string(activity('SettingUpSplitVariables').output.value[0].phoneno)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailTextSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailtext",
+													"value": {
+														"value": "@replace(replace(string(activity('SettingUpSplitVariables').output.value[0].emailtxt),'\"',''),'\\','\\\\')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "EmailToSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "emailto",
+													"value": {
+														"value": "@string(activity('SettingUpSplitVariables').output.value[0].emailto)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "SmsFromSplit",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "SettingUpSplitVariables",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "smsfrom",
+													"value": {
+														"value": "@string(activity('SettingUpSplitVariables').output.value[0].phoneno)",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "CallLogicAppsSplit",
+												"type": "WebActivity",
+												"dependsOn": [
+													{
+														"activity": "SmsMessageSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailSubjectSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "SmsToSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailTextSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "EmailToSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													},
+													{
+														"activity": "SmsFromSplit",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"url": {
+														"value": "@pipeline().parameters.LogicAppUrl",
+														"type": "Expression"
+													},
+													"method": "POST",
+													"body": {
+														"value": "{\n  \"smsfrom\": \"@{variables('smsfrom')}\",\n  \"smsto\": \"@{variables('smsto')}\",\n  \"smsmessage\": \"@{variables('smsmessage')}\",\n  \"emailfrom\": \"@{variables('emailfrom')}\",\n  \"emailto\": \"@{variables('emailto')}\",\n  \"emailsub\": \"@{variables('emailsub')}\",\n  \"emailtext\": \"@{variables('emailtext')}\"\n}",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								]
+							}
+						},
+						{
+							"name": "ErrorMessageNotificationsPlan",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "SwitchPlan",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": "--Declaring Variables\n\nDECLARE @PhoneNo    AS NVARCHAR(50)\nDECLARE @var_AB_Failure_EmailTo      AS NVARCHAR(1000)\nDECLARE @var_AB_Failure_DefaultEmailTo AS NVARCHAR(1000)\nDECLARE @var_AB_Failure_DefaultPhone   AS NVARCHAR(50)\nDECLARE @var_AB_Failure_UseDefaultYN   AS NVARCHAR(1)\n\n--Setting Up Variables\n SET @var_AB_Failure_EmailTo = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_EmailTo')\n SET @var_AB_Failure_DefaultEmailTo = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_DefaultEmailTo')\n SET @var_AB_Failure_DefaultPhone     = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_DefaultPhone')\n SET @var_AB_Failure_UseDefaultYN = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_UseDefaultYN')\n SET @PhoneNo = (SELECT TOP 1 Contact_SupportA.PhoneNumber\n                 FROM ETL_Management.callout.CalloutTimetable TimeTable\n                 INNER JOIN ETL_Management.callout.CalloutContacts Contact_SupportA ON TimeTable.SupportA_ID = Contact_SupportA.SupportID\n                 WHERE ActiveIndicator = 1)\n\n  IF @var_AB_Failure_UseDefaultYN = 'Y'\n  BEGIN\n     SET @PhoneNo = @var_AB_Failure_DefaultPhone\n\t SET @var_AB_Failure_EmailTo = @var_AB_Failure_DefaultEmailTo\n  END\n\n  select @PhoneNo as contactphone,@var_AB_Failure_EmailTo as contactemail",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ActiveBatchMonitoringDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"servername": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"databasename": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "SmsToForAdfFailurePlan",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ErrorMessageNotificationsPlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "smsto",
+								"value": {
+									"value": "@string(activity('ErrorMessageNotificationsPlan').output.firstRow['contactphone'])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "EmailToForAdfFailurePlan",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ErrorMessageNotificationsPlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "emailto",
+								"value": {
+									"value": "@string(activity('ErrorMessageNotificationsPlan').output.firstRow['contactemail'])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "CallLogicAppsForFailurePlan",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "SmsToForAdfFailurePlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "EmailToForAdfFailurePlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "EmailSubjectForAdfFailurePlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "SmsTextForAdfFailurePlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "EmailTextForAdfFailurePlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": {
+									"value": "@pipeline().parameters.LogicAppUrl",
+									"type": "Expression"
+								},
+								"method": "POST",
+								"body": {
+									"value": "{\n  \"smsfrom\": \"@{variables('smsfrom')}\",\n  \"smsto\": \"@{variables('smsto')}\",\n  \"smsmessage\": \"@{variables('smsmessage')}\",\n  \"emailfrom\": \"@{variables('emailfrom')}\",\n  \"emailto\": \"@{variables('emailto')}\",\n  \"emailsub\": \"@{variables('emailsub')}\",\n  \"emailtext\": \"@{variables('emailtext')}\"\n}",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "EmailSubjectForAdfFailurePlan",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ErrorMessageNotificationsPlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "emailsub",
+								"value": {
+									"value": "@concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SmsTextForAdfFailurePlan",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ErrorMessageNotificationsPlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "smsmessage",
+								"value": {
+									"value": "@concat(concat(concat(concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory), ' and the error message is - '),activity('SwitchPlan').Error.message))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "EmailTextForAdfFailurePlan",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ErrorMessageNotificationsPlan",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "emailtext",
+								"value": {
+									"value": "@concat(concat(concat(concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory), ' and the error message is - '),activity('SwitchPlan').Error.message))",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteStoredProcedureStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"StoredProcedureSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "GetPlanCodes",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlMISource",
+						"sqlReaderStoredProcedureName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.StoredProcedureName",
+							"type": "Expression"
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ActiveBatchMonitoringDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"servername": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+								"type": "Expression"
+							},
+							"databasename": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "SmsTextForAdfFailure",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ErrorMessageNotifications",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "smsmessage",
+					"value": {
+						"value": "@concat(concat(concat(concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory), ' and the error message is - '),activity('GetPlanCodes').Error.message))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ErrorMessageNotifications",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "GetPlanCodes",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlMISource",
+						"sqlReaderQuery": "--Declaring Variables\n\nDECLARE @PhoneNo    AS NVARCHAR(50)\nDECLARE @var_AB_Failure_EmailTo      AS NVARCHAR(1000)\nDECLARE @var_AB_Failure_DefaultEmailTo AS NVARCHAR(1000)\nDECLARE @var_AB_Failure_DefaultPhone   AS NVARCHAR(50)\nDECLARE @var_AB_Failure_UseDefaultYN   AS NVARCHAR(1)\n\n--Setting Up Variables\n SET @var_AB_Failure_EmailTo = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_EmailTo')\n SET @var_AB_Failure_DefaultEmailTo = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_DefaultEmailTo')\n SET @var_AB_Failure_DefaultPhone     = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_DefaultPhone')\n SET @var_AB_Failure_UseDefaultYN = (SELECT ConfiguredValue FROM ETL_Management.dbo.DWParameters WHERE ConfigurationFilter = 'var_AB_Failure_UseDefaultYN')\n SET @PhoneNo = (SELECT TOP 1 Contact_SupportA.PhoneNumber\n                 FROM ETL_Management.callout.CalloutTimetable TimeTable\n                 INNER JOIN ETL_Management.callout.CalloutContacts Contact_SupportA ON TimeTable.SupportA_ID = Contact_SupportA.SupportID\n                 WHERE ActiveIndicator = 1)\n\n  IF @var_AB_Failure_UseDefaultYN = 'Y'\n  BEGIN\n     SET @PhoneNo = @var_AB_Failure_DefaultPhone\n\t SET @var_AB_Failure_EmailTo = @var_AB_Failure_DefaultEmailTo\n  END\n\n  select @PhoneNo as contactphone,@var_AB_Failure_EmailTo as contactemail",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ActiveBatchMonitoringDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"servername": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+								"type": "Expression"
+							},
+							"databasename": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "SmsToForAdfFailure",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ErrorMessageNotifications",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "smsto",
+					"value": {
+						"value": "@string(activity('ErrorMessageNotifications').output.firstRow['contactphone'])",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "EmailToForAdfFailure",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ErrorMessageNotifications",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "emailto",
+					"value": {
+						"value": "@string(activity('ErrorMessageNotifications').output.firstRow['contactemail'])",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "CallLogicAppsForAdfFailure",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "SmsToForAdfFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "EmailToForAdfFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "EmailSubjectForAdfFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SmsTextForAdfFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "EmailTextForAdfFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@pipeline().parameters.LogicAppUrl",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"body": {
+						"value": "{\n  \"smsfrom\": \"@{variables('smsfrom')}\",\n  \"smsto\": \"@{variables('smsto')}\",\n  \"smsmessage\": \"@{variables('smsmessage')}\",\n  \"emailfrom\": \"@{variables('emailfrom')}\",\n  \"emailto\": \"@{variables('emailto')}\",\n  \"emailsub\": \"@{variables('emailsub')}\",\n  \"emailtext\": \"@{variables('emailtext')}\"\n}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "EmailSubjectForAdfFailure",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ErrorMessageNotifications",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "emailsub",
+					"value": {
+						"value": "@concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ForEachCode",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "EmailTextForAdfFailure",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ErrorMessageNotifications",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "emailtext",
+					"value": {
+						"value": "@concat(concat(concat(concat(concat(concat('The ', pipeline().Pipeline), ' pipeline failed in ') , pipeline().DataFactory), ' and the error message is - '),activity('GetPlanCodes').Error.message))",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "string",
+				"defaultValue": "15"
+			},
+			"LogicAppUrl": {
+				"type": "string",
+				"defaultValue": "https://trggerfromadf.azurewebsites.net:443/api/triggerfromadf/triggers/manual/invoke?api-version=2022-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=X4AWHnY_RX0zpOtz7VWE1m-2CtWi5Mh_HZA0KHE4kKk"
+			}
+		},
+		"variables": {
+			"smsfrom": {
+				"type": "String",
+				"defaultValue": "BISCallout"
+			},
+			"smsto": {
+				"type": "String"
+			},
+			"smsmessage": {
+				"type": "String"
+			},
+			"emailfrom": {
+				"type": "String",
+				"defaultValue": "BusinessIntelligenceSystems@next.co.uk"
+			},
+			"emailto": {
+				"type": "String"
+			},
+			"emailsub": {
+				"type": "String"
+			},
+			"emailtext": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

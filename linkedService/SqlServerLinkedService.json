@@ -1,0 +1,42 @@
+{
+	"name": "SqlServerLinkedService",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"ServerName": {
+				"type": "string"
+			},
+			"DatabaseName": {
+				"type": "string"
+			},
+			"WindowsAuthUserName": {
+				"type": "string"
+			},
+			"WindowsAuthPasswordInKeyVault": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"connectionString": "integrated security=True;data source=@{linkedService().ServerName};initial catalog=@{linkedService().DatabaseName}",
+			"userName": "@{linkedService().WindowsAuthUserName}",
+			"password": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "KeyVaultLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": {
+					"value": "@linkedService().WindowsAuthPasswordInKeyVault",
+					"type": "Expression"
+				},
+				"secretVersion": ""
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

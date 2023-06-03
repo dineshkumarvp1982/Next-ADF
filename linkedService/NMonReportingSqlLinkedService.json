@@ -1,0 +1,18 @@
+{
+	"name": "NMonReportingSqlLinkedService",
+	"properties": {
+		"parameters": {
+			"ServerName": {
+				"type": "string"
+			},
+			"DatabaseName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlMI",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+		}
+	}
+}

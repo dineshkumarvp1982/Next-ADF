@@ -1,0 +1,486 @@
+{
+	"name": "DeltaZendeskApiToJsonCursorExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CheckUntilLastCursor",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(contains(variables('IsEndofStream'),'true'),or(equals(activity('GetApiDataFail')?.output.value?.errorCode,100),equals(activity('CopyFail')?.output.value?.errorCode,200)))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "GetApiData",
+							"description": "Get Access Token",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "TempApiUrl",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": {
+									"value": "@variables('TempApiUrl')",
+									"type": "Expression"
+								},
+								"method": "GET",
+								"headers": {
+									"Authorization ": {
+										"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+										"type": "Expression"
+									}
+								},
+								"body": "grant_type=client_credentials"
+							}
+						},
+						{
+							"name": "IfDataAvailable",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "IsDataAvailable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@contains(variables('IsDataAvailable'),'false')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "WriteTaskEndedForApiDataNotAvailable",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[Status].[WriteDeltaApiEnded]",
+											"storedProcedureParameters": {
+												"SourceHistoryId": {
+													"value": {
+														"value": "@pipeline().parameters.SourceHistoryId",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"PipelineRun": {
+													"value": {
+														"value": "@utcnow()",
+														"type": "Expression"
+													},
+													"type": "DateTimeOffset"
+												},
+												"WatermarkValue": {
+													"value": {
+														"value": "@variables('CurrentCursorId')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"Status": {
+													"value": "Processed",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ETLManagementLinkedService",
+											"type": "LinkedServiceReference"
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "ZendeskExportToJsonByPageLevel",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "RestSource",
+												"httpRequestTimeout": "00:01:40",
+												"requestInterval": "00.00:00:00.010",
+												"requestMethod": "GET",
+												"additionalHeaders": {
+													"Authorization": {
+														"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+														"type": "Expression"
+													}
+												},
+												"paginationRules": {
+													"supportRFC5988": "true"
+												}
+											},
+											"sink": {
+												"type": "AzureBlobFSSink"
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "ZendeskApiDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"BaseURL": {
+														"value": "@concat(concat('https://',pipeline().parameters.HostName),'.com')",
+														"type": "Expression"
+													},
+													"RelativeURL": {
+														"value": "@variables('TempApiUrl')",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DataLakeJsonDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('CurrentCursorId')),'.json')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "GetNextCursorId",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "ZendeskExportToJsonByPageLevel",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "NextCursorId",
+											"value": {
+												"value": "@activity('GetApiData')?.output?.after_cursor",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "WriteTaskEndedForApiDataAvailable",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "GetNextCursorId",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[Status].[WriteDeltaApiEnded]",
+											"storedProcedureParameters": {
+												"SourceHistoryId": {
+													"value": {
+														"value": "@pipeline().parameters.SourceHistoryId",
+														"type": "Expression"
+													},
+													"type": "Int64"
+												},
+												"PipelineRun": {
+													"value": {
+														"value": "@utcnow()",
+														"type": "Expression"
+													},
+													"type": "DateTimeOffset"
+												},
+												"WatermarkValue": {
+													"value": {
+														"value": "@variables('NextCursorId')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"Status": {
+													"value": "Processed",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "ETLManagementLinkedService",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "CopyFail",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "ZendeskExportToJsonByPageLevel",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "CopyFail",
+											"errorCode": "200"
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "IncrementTempSequenceNumber",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntTempCounter",
+								"value": {
+									"value": "@string(add(int(variables('IntCounter')),1))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IncrementSequenceNumber",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementTempSequenceNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntCounter",
+								"value": {
+									"value": "@variables('IntTempCounter')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "TempApiUrl",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetCurrentCursorId",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TempApiUrl",
+								"value": {
+									"value": "@replace(string(pipeline().parameters.ApiUrl),'var_cursorid',variables('CurrentCursorId'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IsEndOfStream",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IfDataAvailable",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IsEndofStream",
+								"value": {
+									"value": "@if(equals(activity('GetApiData').output.end_of_stream,true),'true','false')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IsDataAvailable",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "GetApiData",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IsDataAvailable",
+								"value": {
+									"value": "@if(contains(coalesce(activity('GetApiData').output.after_cursor,'true'), 'true'),'true','false')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetCurrentCursorId",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementSequenceNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "CurrentCursorId",
+								"value": {
+									"value": "@if(equals(variables('IntCounter'),'1'),pipeline().parameters.CursorId,variables('NextCursorId'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "GetApiDataFail",
+							"type": "Fail",
+							"dependsOn": [
+								{
+									"activity": "GetApiData",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "GetApiDataFailed",
+								"errorCode": "100"
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2022/07/14"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://nextstaging.zendesk.com/api/v2/incremental/tickets/cursor.json?cursor=var_cursorid&per_page=100"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/zendesk/v2/ticket_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "ticket_data"
+			},
+			"PageName": {
+				"type": "string",
+				"defaultValue": "tickets"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "https://nextstaging.zendesk.com"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "b8951d0586d3384e218f16e5ab3eccdaa0097b709e50948d0ed706099ac0f045"
+			},
+			"CursorId": {
+				"type": "string",
+				"defaultValue": "MTY1NzIwNjcyMy4wfHwxMTI4fA"
+			},
+			"SourceHistoryId": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"IsDataAvailable": {
+				"type": "String"
+			},
+			"TempApiUrl": {
+				"type": "String"
+			},
+			"NextCursorId": {
+				"type": "String"
+			},
+			"IntCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IntTempCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IsEndofStream": {
+				"type": "String"
+			},
+			"CurrentCursorId": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

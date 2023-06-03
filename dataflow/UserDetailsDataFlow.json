@@ -1,0 +1,123 @@
+{
+	"name": "UserDetailsDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				},
+				{
+					"name": "sort1"
+				},
+				{
+					"name": "flatten2"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "flatten3"
+				},
+				{
+					"name": "union1"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          totalHits as integer,",
+				"          userDetails as (primaryPresence as (endTime as string, organizationPresenceId as string, startTime as string, systemPresence as string)[], routingStatus as (endTime as string, routingStatus as string, startTime as string)[], userId as string)[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(userDetails, userDetails),",
+				"     mapColumn(",
+				"          userId = userDetails.userId,",
+				"          primaryPresence = userDetails.primaryPresence,",
+				"          routingStatus = userDetails.routingStatus",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"derivedColumn1 sort(asc(UserId, false),",
+				"     asc(Start_Date, false),",
+				"     asc(Start_Time, false),",
+				"     asc(End_Date, false),",
+				"     asc(End_Time, false)) ~> sort1",
+				"flatten1 foldDown(unroll(routingStatus, routingStatus),",
+				"     mapColumn(",
+				"          UserId = userId,",
+				"          State = routingStatus.routingStatus,",
+				"          StartTime = routingStatus.startTime,",
+				"          EndTime = routingStatus.endTime",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten2",
+				"union1 derive(Start_Date = split(StartTime,'T')[1],",
+				"          Start_Time = split(StartTime,'T')[2],",
+				"          End_Date = split(EndTime,'T')[1],",
+				"          End_Time = split(EndTime,'T')[2]) ~> derivedColumn1",
+				"flatten1 foldDown(unroll(primaryPresence, primaryPresence),",
+				"     mapColumn(",
+				"          UserId = userId,",
+				"          organizationPresenceId = primaryPresence.organizationPresenceId,",
+				"          State = primaryPresence.systemPresence,",
+				"          StartTime = primaryPresence.startTime,",
+				"          EndTime = primaryPresence.endTime",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten3",
+				"flatten2, flatten3 union(byName: true)~> union1",
+				"sort1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     saveOrder: 1,",
+				"     mapColumn(",
+				"          UserId,",
+				"          organizationPresenceId,",
+				"          State,",
+				"          Start_Date,",
+				"          Start_Time,",
+				"          End_Date,",
+				"          End_Time",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

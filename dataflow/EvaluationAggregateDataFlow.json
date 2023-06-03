@@ -1,0 +1,68 @@
+{
+	"name": "EvaluationAggregateDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "FlattenJson"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string (\"original/genesys/v2/evaluation_aggregate_data/2022/06/08/\"),",
+				"     FileName as string (\"evaluation_aggregate_data*.json\")",
+				"}",
+				"source(output(",
+				"          results as (data as (interval as string, metrics as (metric as string, stats as (count as boolean))[])[], group as (conversationId as string, evaluationId as string))[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(results, results),",
+				"     mapColumn(",
+				"          conversationId = results.group.conversationId,",
+				"          evaluationId = results.group.evaluationId",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> FlattenJson",
+				"FlattenJson sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     saveOrder: 1,",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

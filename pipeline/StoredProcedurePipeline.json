@@ -1,0 +1,147 @@
+{
+	"name": "StoredProcedurePipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ExecuteStoredProcedure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "ExecuteStoredProcedure",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": {
+						"value": "@activity('WriteTaskStarted').output.firstRow.StoredProcedureName",
+						"type": "Expression"
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlManagedInstanceLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"ServerName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+							"type": "Expression"
+						},
+						"DatabaseName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteStoredProcedureStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"StoredProcedureSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

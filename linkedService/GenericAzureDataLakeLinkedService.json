@@ -1,0 +1,20 @@
+{
+	"name": "GenericAzureDataLakeLinkedService",
+	"properties": {
+		"parameters": {
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+		},
+		"connectVia": {
+			"referenceName": "AzureIntegrationRuntimeEUW",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

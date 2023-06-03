@@ -1,0 +1,38 @@
+{
+	"name": "DatabricksLinkedService",
+	"properties": {
+		"parameters": {
+			"MinWorkers": {
+				"type": "int",
+				"defaultValue": 1
+			},
+			"MaxWorkers": {
+				"type": "int",
+				"defaultValue": 4
+			}
+		},
+		"annotations": [],
+		"type": "AzureDatabricks",
+		"typeProperties": {
+			"domain": "https://westeurope.azuredatabricks.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/f7f99ac1-4ec0-4f26-b051-59786c2a0c6c/resourceGroups/DataAnalytics-DBK-RG-BIS-DEV-EUW/providers/Microsoft.Databricks/workspaces/DataAnalytics-DBK-BIS-DEV-EUW",
+			"instancePoolId": "1108-102648-fish103-pool-tlgsdcj6",
+			"newClusterNumOfWorker": "@{linkedService().MinWorkers} : @{linkedService().MaxWorkers}",
+			"newClusterSparkConf": {
+				"spark.hadoop.fs.permissions.umask-mode": "000"
+			},
+			"newClusterSparkEnvVars": {
+				"PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+			},
+			"newClusterVersion": "12.2.x-scala2.12",
+			"newClusterInitScripts": [],
+			"clusterOption": "Fixed"
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/linkedservices"
+}

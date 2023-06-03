@@ -1,0 +1,289 @@
+{
+	"name": "TimeoutPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Set Seconds",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Time Array",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Seconds",
+					"value": {
+						"value": "@variables('TimeArray')[3]",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Minutes",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Time Array",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Minutes",
+					"value": {
+						"value": "@variables('TimeArray')[2]",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Hours",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Time Array",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Hours",
+					"value": {
+						"value": "@variables('TimeArray')[1]",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Days",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Time Array",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Days",
+					"value": {
+						"value": "@variables('TimeArray')[0]",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set Time Array",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "TimeArray",
+					"value": {
+						"value": "@split(replace(pipeline().parameters.TimeOut,'.',':'),':')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set EndTime",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set Seconds",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Minutes",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Hours",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set Days",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "EndTime",
+					"value": {
+						"value": "@adddays(addhours(addminutes(addseconds(pipeline().parameters.PipeLineStartTime,int(variables('Seconds'))),int(variables('Minutes'))),int(variables('Hours'))),int(variables('Days')))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "CheckTimeout",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Set BoolTimeOut",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@variables('BoolTimeOut')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Stored procedure1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[CreateADFError]",
+								"storedProcedureParameters": {
+									"ErrorMessage": {
+										"value": "ERROR: The configured timeout has been reached for the pipeline",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Set TicksEnd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set EndTime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "TicksEnd",
+					"value": {
+						"value": "@string(ticks(variables('EndTime')))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set TicksNow",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set EndTime",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "TicksNow",
+					"value": {
+						"value": "@string(ticks(utcnow()))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Set BoolTimeOut",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Set TicksEnd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Set TicksNow",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "BoolTimeOut",
+					"value": {
+						"value": "@greater(int(variables('TicksNow')),int(variables('TicksEnd')))",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"TimeOut": {
+				"type": "string"
+			},
+			"PipeLineStartTime": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"Days": {
+				"type": "String"
+			},
+			"Hours": {
+				"type": "String"
+			},
+			"Minutes": {
+				"type": "String"
+			},
+			"Seconds": {
+				"type": "String"
+			},
+			"TimeArray": {
+				"type": "Array"
+			},
+			"EndTime": {
+				"type": "String"
+			},
+			"TicksNow": {
+				"type": "String"
+			},
+			"TicksEnd": {
+				"type": "String"
+			},
+			"BoolTimeOut": {
+				"type": "Boolean"
+			}
+		},
+		"annotations": []
+	}
+}

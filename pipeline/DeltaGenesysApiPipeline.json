@@ -1,0 +1,580 @@
+{
+	"name": "DeltaGenesysApiPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteDeltaApiStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"DeltaApiSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							},
+							"ApiProviderName": {
+								"type": "String",
+								"value": "Genesys"
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "IfTransformationJobNotNull-JsonToParquet",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteDeltaApiEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"WatermarkValue": {
+							"value": {
+								"value": "@variables('NewWatermarkValue')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Status": {
+							"value": "Completed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "GetApiAccessToken",
+				"description": "Get Access Token",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "GetApiInterval",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"url": {
+						"value": "@concat('https://',replace(activity('WriteTaskStarted').output.firstRow.ApiHostName,'api','login'),'/oauth/token')",
+						"type": "Expression"
+					},
+					"method": "POST",
+					"headers": {
+						"Host": {
+							"value": "@replace(activity('WriteTaskStarted').output.firstRow.ApiHostName,'api','login')",
+							"type": "Expression"
+						},
+						"Content-Type": {
+							"value": "application/x-www-form-urlencoded",
+							"type": "Expression"
+						},
+						"Authorization": {
+							"value": "@concat('Basic ', activity('WriteTaskStarted').output.firstRow.AuthorizationKey)",
+							"type": "Expression"
+						}
+					},
+					"body": "grant_type=client_credentials"
+				}
+			},
+			{
+				"name": "AssignAccessToken",
+				"description": "Assign Access Token To Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetApiAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "AccessToken",
+					"value": {
+						"value": "@activity('GetApiAccessToken').output.access_token",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "GetApiInterval",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetNewWaterMark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "Interval",
+					"value": {
+						"value": "@concat(formatDateTime(activity('WriteTaskStarted').output.firstRow.WatermarkValue,'yyyy-MM-ddTHH:mm:ss.000Z'),'/',formatDateTime(adddays(activity('WriteTaskStarted').output.firstRow.WatermarkValue,1),'yyyy-MM-ddTHH:mm:ss.000Z'))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "GetNewWaterMark",
+				"description": "Assign Access Token To Variable",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "NewWatermarkValue",
+					"value": {
+						"value": "@formatDateTime(adddays(activity('WriteTaskStarted').output.firstRow.WatermarkValue,1),'yyyy-MM-dd HH:mm:ss.000')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SwitchPipeline-ApiToJson",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "AssignAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@activity('WriteTaskStarted').output.firstRow.ExtractMethod",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "Full",
+							"activities": [
+								{
+									"name": "DeltaGenesysApiToJsonFullExtract",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaGenesysApiToJsonFullExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@variables('AccessToken')",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"Requestbody": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.Requestbody",
+												"type": "Expression"
+											},
+											"ApiMethod": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiMethod",
+												"type": "Expression"
+											},
+											"BatchInMinutes": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.BatchInMinutes",
+												"type": "Expression"
+											},
+											"StartInterval": {
+												"value": "@formatDateTime(activity('WriteTaskStarted').output.firstRow.WatermarkValue,'yyyy-MM-ddTHH:mm:ss.000')",
+												"type": "Expression"
+											},
+											"EndInterval": {
+												"value": "@formatDateTime(variables('NewWatermarkValue'),'yyyy-MM-ddTHH:mm:ss.000')\n",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "Page",
+							"activities": [
+								{
+									"name": "DeltaGenesysApiToRawPageByPage",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaGenesysApiToJsonPageExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"IsPageExtract": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.IsPageExtract",
+												"type": "Expression"
+											},
+											"PageName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PageName",
+												"type": "Expression"
+											},
+											"Requestbody": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.Requestbody",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@variables('AccessToken')",
+												"type": "Expression"
+											},
+											"Interval": {
+												"value": "@variables('Interval')",
+												"type": "Expression"
+											},
+											"ApiMethod": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiMethod",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "Parameter",
+							"activities": [
+								{
+									"name": "DeltaGenesysApiToJsonParamExtractPipeline",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaGenesysApiToJsonParamExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@variables('AccessToken')",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"DataDestinationApiId": {
+												"value": "@pipeline().parameters.Id",
+												"type": "Expression"
+											},
+											"Requestbody": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.RequestBody",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"ApiMethod": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiMethod",
+												"type": "Expression"
+											},
+											"DataLakeName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeName",
+												"type": "Expression"
+											},
+											"DataLakeFileSystem": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeFileSystem",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "Bulk",
+							"activities": [
+								{
+									"name": "DeltaGenesysApiToJsonBulkExtractPipeline",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaGenesysApiToJsonBulkExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@variables('AccessToken')",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"DataDestinationApiId": {
+												"value": "@pipeline().parameters.Id",
+												"type": "Expression"
+											},
+											"Requestbody": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.RequestBody",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"ApiMethod": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiMethod",
+												"type": "Expression"
+											},
+											"DataLakeName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeName",
+												"type": "Expression"
+											},
+											"DataLakeFileSystem": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeFileSystem",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "IfTransformationJobNotNull-JsonToParquet",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "SwitchPipeline-ApiToJson",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.TransformationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "DeltaGenesysJsonToParquetPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaGenesysJsonToParquetPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"TransformationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TransformationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									},
+									"DataLakeName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeName",
+										"type": "Expression"
+									},
+									"DataLakeFileSystem": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeFileSystem",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int",
+				"defaultValue": 13
+			}
+		},
+		"variables": {
+			"Interval": {
+				"type": "String"
+			},
+			"AccessToken": {
+				"type": "String"
+			},
+			"NewWatermarkValue": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,121 @@
+{
+	"name": "DeltaZendeskApiToJsonFullExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "ZendeskExportToJson",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "AzureBlobFSSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "ZendeskApiDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"BaseURL": {
+								"value": "@concat(concat('https://',pipeline().parameters.HostName),'.com')",
+								"type": "Expression"
+							},
+							"RelativeURL": {
+								"value": "@pipeline().parameters.ApiUrl",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DataLakeJsonDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"FolderName": {
+								"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(pipeline().parameters.FileName,'.json')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2022/06/05"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://nextstaging.zendesk.com/api/v2/incremental/tickets/cursor.json?cursor=MTY0NTEyNjIwMS4wfHwxODJ8&per_page=100"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/zendesk/v2/ticket_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "ticket_data"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "https://nextstaging.zendesk.com"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "b8951d0586d3384e218f16e5ab3eccdaa0097b709e50948d0ed706099ac0f045"
+			}
+		},
+		"variables": {
+			"IsEmptyPage": {
+				"type": "String"
+			},
+			"NextPage": {
+				"type": "String"
+			},
+			"IncrementalCursor": {
+				"type": "String"
+			},
+			"DummyEmptyPage": {
+				"type": "Array",
+				"defaultValue": [
+					"false"
+				]
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,548 @@
+{
+	"name": "PSAnalysisServicesMiniModelPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupTables",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Mapping].[GetAnalysisServicesTables]",
+						"storedProcedureParameters": {
+							"AnalysisServicesSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@activity('WriteTaskStarted').output.firstRow.AnalysisServicesSourceId",
+									"type": "Expression"
+								}
+							}
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachFull",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "FilterFull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('FilterFull').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "AppendToFullTables",
+							"type": "AppendVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "FullTables",
+								"value": {
+									"value": "@json(concat('{\"name\": \"', item().TableName, '\"}'))",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "RefreshAnalysisServices",
+				"type": "Custom",
+				"dependsOn": [
+					{
+						"activity": "ForEachFull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "ForEachPartitioned",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"command": "powershell .\\AASMiniModelRefresh.ps1",
+					"resourceLinkedService": {
+						"referenceName": "AzureBatchStorageLinkedServiceAAS",
+						"type": "LinkedServiceReference"
+					},
+					"folderPath": "batch",
+					"extendedProperties": {
+						"authenticationType": "Certificate",
+						"analysisServicesClientIdName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.AnalysisServicesClientIdName",
+							"type": "Expression"
+						},
+						"analysisServicesClientSecretName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.AnalysisServicesClientSecretName",
+							"type": "Expression"
+						},
+						"dataSourceName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DataSourceName",
+							"type": "Expression"
+						},
+						"dataSourceType": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DataSourceType",
+							"type": "Expression"
+						},
+						"dataSourceClientIdName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DataSourceClientIdName",
+							"type": "Expression"
+						},
+						"dataSourceClientSecretName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DataSourceClientSecretName",
+							"type": "Expression"
+						},
+						"databaseName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+							"type": "Expression"
+						},
+						"directoryId": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DirectoryId",
+							"type": "Expression"
+						},
+						"fullTables": {
+							"value": "@variables('FullTables')",
+							"type": "Expression"
+						},
+						"keyVaultAuthentication": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.KeyVaultThumbprint",
+							"type": "Expression"
+						},
+						"keyVaultBaseUri": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.KeyVaultBaseUri",
+							"type": "Expression"
+						},
+						"keyVaultClientId": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.KeyVaultClientId",
+							"type": "Expression"
+						},
+						"maxParallelism": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.MaxParallelism",
+							"type": "Expression"
+						},
+						"modelProcessorType": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ModelProcessorType",
+							"type": "Expression"
+						},
+						"partitionedTables": {
+							"value": "@variables('PartitionedTables')",
+							"type": "Expression"
+						},
+						"serverName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+							"type": "Expression"
+						},
+						"managedIdentity": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ManagedIdentityClientId",
+							"type": "Expression"
+						},
+						"keyVaultName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.KeyVaultName",
+							"type": "Expression"
+						},
+						"assemblyPath": "C:\\\\Program Files\\\\WindowsPowerShell\\\\Modules\\\\SqlServer\\\\21.1.18256\\\\Microsoft.AnalysisServices.Tabular.dll",
+						"itemExpression": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ItemExpression",
+							"type": "Expression"
+						},
+						"clientExpression": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.ClientExpression",
+							"type": "Expression"
+						},
+						"branchExpression": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.BranchExpression",
+							"type": "Expression"
+						},
+						"subscriptionId": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SubscriptionId",
+							"type": "Expression"
+						}
+					},
+					"referenceObjects": {
+						"linkedServices": [],
+						"datasets": []
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureBatchLinkedServiceforAAS",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "RefreshAnalysisServices",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WritePowerBIServicesStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"PowerBIServicesSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "FilterPartitioned",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "LookupTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupTables').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().IsPartitioned, True)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "FilterFull",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "LookupTables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupTables').output.value",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().IsPartitioned, False)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEachPartitioned",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "FilterPartitioned",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('FilterPartitioned').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "IfManagedInstance",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(item().PartitionDataSourceType, 'ManagedInstance')",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "LookupPartitionsManagedInstance",
+										"type": "Lookup",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "SqlMISource",
+												"sqlReaderStoredProcedureName": {
+													"value": "@item().PartitionLookup",
+													"type": "Expression"
+												},
+												"storedProcedureParameters": {
+													"PipelineRun": {
+														"type": "Datetimeoffset",
+														"value": {
+															"value": "@utcnow()",
+															"type": "Expression"
+														}
+													}
+												},
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "AzureSqlManagedInstanceDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"ServerName": {
+														"value": "@item().PartitionServer",
+														"type": "Expression"
+													},
+													"DatabaseName": {
+														"value": "@item().PartitionDatabase",
+														"type": "Expression"
+													},
+													"TableName": " "
+												}
+											},
+											"firstRowOnly": false
+										}
+									},
+									{
+										"name": "AppendToPartitionedTablesManagedInstance",
+										"type": "AppendVariable",
+										"dependsOn": [
+											{
+												"activity": "LookupPartitionsManagedInstance",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "PartitionedTables",
+											"value": {
+												"value": "@json(concat('{','\"name\": \"', item().TableName, '\", \"partitions\": ', activity('LookupPartitionsManagedInstance').output.value, '}\"'))",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "IfParquet",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(item().PartitionDataSourceType, 'Parquet')",
+									"type": "Expression"
+								},
+								"ifTrueActivities": [
+									{
+										"name": "AppendToPartitionedTablesParquet",
+										"type": "AppendVariable",
+										"dependsOn": [
+											{
+												"activity": "LookupPartitionsParquet",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "PartitionedTables",
+											"value": {
+												"value": "@json(concat('{','\"name\": \"', item().TableName, '\", \"partitions\": ', activity('LookupPartitionsParquet').output.value, '}\"'))",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "LookupPartitionsParquet",
+										"type": "Lookup",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 3,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "ParquetSource",
+												"storeSettings": {
+													"type": "AzureBlobFSReadSettings",
+													"recursive": true,
+													"wildcardFileName": "*.parquet",
+													"enablePartitionDiscovery": false
+												}
+											},
+											"dataset": {
+												"referenceName": "DataLakeParquetDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "log/analysis_services/@{item().PartitionLookup}/parquet/current/partition.parquet",
+														"type": "Expression"
+													},
+													"FileName": " "
+												}
+											},
+											"firstRowOnly": false
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"variables": {
+			"FullTables": {
+				"type": "Array"
+			},
+			"PartitionedTables": {
+				"type": "Array"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

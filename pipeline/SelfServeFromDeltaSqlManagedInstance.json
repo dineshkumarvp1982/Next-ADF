@@ -1,0 +1,496 @@
+{
+	"name": "SelfServeFromDeltaSqlManagedInstance",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfIsParquet",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LookupNewWatermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@pipeline().parameters.IsParquet",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CopyToDataLakeDelimited",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": {
+										"value": "SELECT *\nFROM @{pipeline().parameters.SourceTableName}\nWHERE \n@{pipeline().parameters.SourceWatermarkField} > '@{activity('WriteTaskStarted').output.firstRow.WatermarkValue}' AND @{pipeline().parameters.SourceWatermarkField} <= '@{activity('LookupNewWatermark').output.firstRow.NewWatermarkValue}'",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "AzureSqlManagedInstanceDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.SourceServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.SourceDatabaseName",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SelfServeDataLakeDelimitedDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@pipeline().parameters.DestinationDataLakeName",
+											"type": "Expression"
+										},
+										"FolderName": {
+											"value": "@{pipeline().parameters.DestinationFolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.DestinationFileName",
+											"type": "Expression"
+										},
+										"HasHeader": true,
+										"Delimiter": ","
+									}
+								}
+							]
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "CopyToDataLakeParquet",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": {
+										"value": "SELECT *\nFROM @{pipeline().parameters.SourceTableName}\nWHERE \n@{pipeline().parameters.SourceWatermarkField} > '@{activity('WriteTaskStarted').output.firstRow.WatermarkValue}' AND @{pipeline().parameters.SourceWatermarkField} <= '@{activity('LookupNewWatermark').output.firstRow.NewWatermarkValue}'",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "AzureSqlManagedInstanceDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.SourceServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.SourceDatabaseName",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SelfServeDataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@pipeline().parameters.DestinationDataLakeName",
+											"type": "Expression"
+										},
+										"FolderName": {
+											"value": "@{pipeline().parameters.DestinationFolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.DestinationFileName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "LookupNewWatermark",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT MAX(@{pipeline().parameters.SourceWatermarkField}) as NewWatermarkValue FROM @{pipeline().parameters.SourceTableName}",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SqlServerDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"ServerName": {
+								"value": "@pipeline().parameters.SourceServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@pipeline().parameters.SourceDatabaseName",
+								"type": "Expression"
+							},
+							"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+							"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "CopyToPartition",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteSelfServeDeltaSqlEnded]",
+					"storedProcedureParameters": {
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"SelfServeDeltaSqlId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SelfServeDeltaSqlId",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"WatermarkValue": {
+							"value": {
+								"value": "@activity('LookupNewWatermark').output.firstRow.NewWatermarkValue",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteSelfServeDeltaSqlStarted]",
+						"storedProcedureParameters": {
+							"DestinationDataLakeName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.DestinationDataLakeName",
+									"type": "Expression"
+								}
+							},
+							"DestinationDateTimeFormat": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.DestinationDateTimeFormat",
+									"type": "Expression"
+								}
+							},
+							"DestinationFileName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.DestinationFileName",
+									"type": "Expression"
+								}
+							},
+							"DestinationFolderName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.DestinationFolderName",
+									"type": "Expression"
+								}
+							},
+							"IsParquet": {
+								"type": "Boolean",
+								"value": {
+									"value": "@pipeline().parameters.IsParquet",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"SourceDatabaseName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.SourceDatabaseName",
+									"type": "Expression"
+								}
+							},
+							"SourceDefaultWatermarkValue": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.SourceDefaultWatermarkValue",
+									"type": "Expression"
+								}
+							},
+							"SourceServerName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.SourceServerName",
+									"type": "Expression"
+								}
+							},
+							"SourceTableName": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.SourceTableName",
+									"type": "Expression"
+								}
+							},
+							"SourceWatermarkField": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.SourceWatermarkField",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "CopyToPartition",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "IfIsParquet",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "BinarySource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true
+						},
+						"formatSettings": {
+							"type": "BinaryReadSettings"
+						}
+					},
+					"sink": {
+						"type": "BinarySink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"validateDataConsistency": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SelfServeDataLakeBinaryDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FolderName": {
+								"value": "@{pipeline().parameters.DestinationFolderName}/current",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@pipeline().parameters.DestinationFileName",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SelfServeDataLakeBinaryDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FolderName": {
+								"value": "@{pipeline().parameters.DestinationFolderName}/@{activity('WriteTaskStarted').output.firstRow.PartitionName}",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@pipeline().parameters.DestinationFileName",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"SourceServerName": {
+				"type": "string"
+			},
+			"SourceDatabaseName": {
+				"type": "string"
+			},
+			"SourceTableName": {
+				"type": "string"
+			},
+			"SourceWatermarkField": {
+				"type": "string"
+			},
+			"SourceDefaultWatermarkValue": {
+				"type": "string"
+			},
+			"DestinationDataLakeName": {
+				"type": "string"
+			},
+			"DestinationFolderName": {
+				"type": "string"
+			},
+			"DestinationFileName": {
+				"type": "string"
+			},
+			"DestinationDateTimeFormat": {
+				"type": "string"
+			},
+			"IsParquet": {
+				"type": "bool",
+				"defaultValue": true
+			}
+		},
+		"folder": {
+			"name": "Self Serve"
+		},
+		"annotations": []
+	}
+}

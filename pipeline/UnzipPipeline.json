@@ -1,0 +1,161 @@
+{
+	"name": "UnzipPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:02:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteUnzipStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"UnzipSourceID": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "UnzipSubPipeline",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:02:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "UnzipSubPipeline",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "UnzipSubPipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"SourceDataLakeName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceDataLakeName",
+							"type": "Expression"
+						},
+						"SourceFileSystem": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceFileSystem",
+							"type": "Expression"
+						},
+						"SourceDirectory": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceDirectory",
+							"type": "Expression"
+						},
+						"SourceFileName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceFileName",
+							"type": "Expression"
+						},
+						"DestinationDataLakeName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+							"type": "Expression"
+						},
+						"DestinationFileSystem": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DestinationFileSystem",
+							"type": "Expression"
+						},
+						"DestinationDirectory": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDirectory",
+							"type": "Expression"
+						},
+						"CompressionType": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceFileExtn",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	}
+}

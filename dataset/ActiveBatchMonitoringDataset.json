@@ -1,0 +1,34 @@
+{
+	"name": "ActiveBatchMonitoringDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlManagedInstanceLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ServerName": {
+					"value": "@dataset().servername",
+					"type": "Expression"
+				},
+				"DatabaseName": {
+					"value": "@dataset().databasename",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"servername": {
+				"type": "string"
+			},
+			"databasename": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlMITable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "iwdba",
+			"table": "batch_monitoring"
+		}
+	}
+}

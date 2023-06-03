@@ -1,0 +1,67 @@
+{
+	"name": "KeepOldestOrNewest",
+	"properties": {
+		"activities": [
+			{
+				"name": "KeepOldestOrNewestFile",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/bisparkADF/release/notebooks/KeepOldestOrNewestFile",
+					"baseParameters": {
+						"PathToFolder": {
+							"value": "@pipeline().parameters.PathToFolder",
+							"type": "Expression"
+						},
+						"FileName": {
+							"value": "@pipeline().parameters.FileName",
+							"type": "Expression"
+						},
+						"NameOrModified": {
+							"value": "@pipeline().parameters.NameOrModified",
+							"type": "Expression"
+						},
+						"OldestOrNewest": {
+							"value": "@pipeline().parameters.OldestOrNewest",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DatabricksLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"MinWorkers": 1,
+						"MaxWorkers": 4
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PathToFolder": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"NameOrModified": {
+				"type": "string"
+			},
+			"OldestOrNewest": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Stages"
+		},
+		"annotations": []
+	}
+}

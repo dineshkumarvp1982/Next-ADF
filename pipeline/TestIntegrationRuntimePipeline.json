@@ -1,0 +1,164 @@
+{
+	"name": "TestIntegrationRuntimePipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfRuntimeIsSelfHosted",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.runtime, 'SelfHosted')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "GetServerName",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": " SELECT CONCAT('ADF has successfully retrieved the servername from ', @@SERVERNAME, '- the SQL Server linked service that runs on the self-hosted integration runtime') AS [Message]",
+									"queryTimeout": "00:15:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@pipeline().parameters.WindowsAuthUserName",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@pipeline().parameters.WindowsAuthPassword",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@pipeline().parameters.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "IfRuntimeIsAzureHosted",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "IfRuntimeIsSelfHosted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.Runtime, 'Azure')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "GetDataLakeParquetFile",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									}
+								},
+								"dataset": {
+									"referenceName": "DataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@pipeline().parameters.FolderName",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.FileName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Runtime": {
+				"type": "string",
+				"defaultValue": "SelfHosted"
+			},
+			"ServerName": {
+				"type": "string",
+				"defaultValue": "END-BPSQ07-VS01\\INSTANCE01"
+			},
+			"DatabaseName": {
+				"type": "string",
+				"defaultValue": "Next_DSS"
+			},
+			"WindowsAuthUserName": {
+				"type": "string",
+				"defaultValue": "Next-PLC\\Admin-BIS-DBA"
+			},
+			"WindowsAuthPassword": {
+				"type": "string",
+				"defaultValue": "AdminBISDBA"
+			},
+			"TableName": {
+				"type": "string",
+				"defaultValue": "[iwdba].[sale_item]"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "raw/formatted/bis_admin/sla/parquet/current"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "sla_results_summary.parquet"
+			}
+		},
+		"folder": {
+			"name": "Test/Infrastructure"
+		},
+		"annotations": []
+	}
+}

@@ -1,0 +1,21 @@
+{
+	"name": "AzureBatchLinkedService",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBatch",
+		"typeProperties": {
+			"batchUri": "https://euwbisbatchdev.westeurope.batch.azure.com",
+			"poolName": "pool",
+			"accountName": "euwbisbatchdev",
+			"linkedServiceName": {
+				"referenceName": "AzureBatchStorageLinkedService",
+				"type": "LinkedServiceReference"
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/linkedservices"
+}

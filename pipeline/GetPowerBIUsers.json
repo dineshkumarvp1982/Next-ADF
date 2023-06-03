@@ -1,0 +1,110 @@
+{
+	"name": "GetPowerBIUsers",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get PowerBI access infomation",
+				"type": "Custom",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"command": "powershell -NoProfile -File \"GetPBIRoles.ps1\"",
+					"resourceLinkedService": {
+						"referenceName": "AzureBatchStorageLinkedServiceAAS",
+						"type": "LinkedServiceReference"
+					},
+					"folderPath": "pbiusersps",
+					"referenceObjects": {
+						"linkedServices": [],
+						"datasets": []
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureBatchLinkedServiceforAAS",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Upload files",
+				"type": "Custom",
+				"dependsOn": [
+					{
+						"activity": "Get PowerBI access infomation",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"command": "powershell -NoProfile -File \"Uploadblob.ps1\"",
+					"resourceLinkedService": {
+						"referenceName": "AzureBatchStorageLinkedServiceAAS",
+						"type": "LinkedServiceReference"
+					},
+					"folderPath": "pbiusersps",
+					"referenceObjects": {
+						"linkedServices": [],
+						"datasets": []
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureBatchLinkedServiceforAAS",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Refresh PowerBI dataset",
+				"type": "Custom",
+				"dependsOn": [
+					{
+						"activity": "Upload files",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"command": "powershell -NoProfile -File \"PBIRefreshdataset.ps1\"",
+					"resourceLinkedService": {
+						"referenceName": "AzureBatchStorageLinkedServiceAAS",
+						"type": "LinkedServiceReference"
+					},
+					"folderPath": "pbiusersps",
+					"referenceObjects": {
+						"linkedServices": [],
+						"datasets": []
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureBatchLinkedServiceforAAS",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

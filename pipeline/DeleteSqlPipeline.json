@@ -1,0 +1,317 @@
+{
+	"name": "DeleteSqlPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfConnectionTypeIsManagedInstance",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceType, 'managedinstance')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEndedManagedInstance",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "DeleteSqlManagedInstance",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteDeleteSqlEnded]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ArchiveSourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ArchiveSourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"DeleteQuery": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DeleteQuery",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"RowsDeleted": {
+										"value": {
+											"value": "@activity('DeleteSqlManagedInstance').output.firstRow.RowsDeleted",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "Datetimeoffset"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "DeleteSqlManagedInstance",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": {
+										"value": "@{activity('WriteTaskStarted').output.firstRow.DeleteQuery}; SELECT @@ROWCOUNT AS [RowsDeleted];",
+										"type": "Expression"
+									}
+								},
+								"dataset": {
+									"referenceName": "AzureSqlManagedInstanceDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "IfConnectionTypeIsOnPremise",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceType, 'onpremise')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEndedOnPremise",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "DeleteSqlOnPremise",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteDeleteSqlEnded]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ArchiveSourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ArchiveSourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"DeleteQuery": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DeleteQuery",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"RowsDeleted": {
+										"value": {
+											"value": "@activity('DeleteSqlOnPremise').output.firstRow.RowsDeleted",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "Datetimeoffset"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "DeleteSqlOnPremise",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@{activity('WriteTaskStarted').output.firstRow.DeleteQuery}; SELECT @@ROWCOUNT AS [RowsDeleted];",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00"
+								},
+								"dataset": {
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteDeleteSqlStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"DeleteSqlSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,111 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "DataAnalytics-ADF-BIS-Dev-EUW"
+        },
+        "AzureSqlManagedInstanceLinkedService_connectionString": {
+            "value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+        },
+        "ETLManagementLinkedService_connectionString": {
+            "value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=az-bdsqdb03.database.windows.net;Initial Catalog=ETLManagement"
+        },
+        "NMonReportingSqlLinkedService_connectionString": {
+            "value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+        },
+        "SqlServerLinkedService_connectionString": {
+            "value": "Integrated Security=True;Data Source=@{linkedService().ServerName};Initial Catalog=@{linkedService().DatabaseName}"
+        },
+        "DataLakeBinaryDataset_properties_typeProperties_fileName": {
+            "value": "@dataset().FileName"
+        },
+        "DataLakeBinaryDataset_properties_typeProperties_folderPath": {
+            "value": "@dataset().FolderName"
+        },
+        "DataLakeJsonDataset_properties_typeProperties_fileName": {
+            "value": "@dataset().FileName"
+        },
+        "DataLakeJsonDataset_properties_typeProperties_folderPath": {
+            "value": "@dataset().FolderName"
+        },
+        "DataLakeLandingBinaryDataset_properties_typeProperties_fileName": {
+            "value": "@dataset().SourceFileName"
+        },
+        "DataLakeLandingBinaryDataset_properties_typeProperties_folderPath": {
+            "value": "@dataset().SourceFolderName"
+        },
+        "ApiLinkedService_properties_typeProperties_url": {
+            "value": "@{linkedService().BaseURL}"
+        },
+        "AzureBatchLinkedService_properties_typeProperties_batchUri": {
+            "value": "https://euwbisbatchdev.westeurope.batch.azure.com"
+        },
+        "AzureBatchLinkedService_properties_typeProperties_poolName": {
+            "value": "pool"
+        },
+        "AzureBatchLinkedService_properties_typeProperties_accountName": {
+            "value": "euwbisbatchdev"
+        },
+        "AzureBatchLinkedServiceforAAS_properties_typeProperties_batchUri": {
+            "value": "https://babisdeveuw.westeurope.batch.azure.com"
+        },
+        "AzureBatchLinkedServiceforAAS_properties_typeProperties_poolName": {
+            "value": "poolaasrefresh"
+        },
+        "AzureBatchLinkedServiceforAAS_properties_typeProperties_accountName": {
+            "value": "babisdeveuw"
+        },
+		"AzureDatabricksDeltaLakeLinkedService_properties_typeProperties_domain": {
+            "value": "https://adb-1382441875587056.16.azuredatabricks.net"
+        },
+        "AzureDatabricksDeltaLakeLinkedService_properties_typeProperties_clusterId": {
+            "value": "0803-152142-g90dei5m"
+        },
+        "AzureBatchStorageLinkedService_properties_typeProperties_connectionString_secretName": {
+            "value": "BatchStorageConnectionString"
+        },
+        "AzureBatchStorageLinkedServiceAAS_properties_typeProperties_connectionString_secretName": {
+            "value": "batchstorage-connectionstring"
+        },
+        "DataLakeLandingLinkedService_properties_typeProperties_url": {
+            "value": "https://bislandingdev.dfs.core.windows.net"
+        },
+        "DataLakeLinkedService_properties_typeProperties_url": {
+            "value": "https://bisdatalakedevv2.dfs.core.windows.net"
+        },
+        "DatabricksLinkedService_properties_typeProperties_workspaceResourceId": {
+            "value": "/subscriptions/f7f99ac1-4ec0-4f26-b051-59786c2a0c6c/resourceGroups/DataAnalytics-DBK-RG-BIS-DEV-EUW/providers/Microsoft.Databricks/workspaces/DataAnalytics-DBK-BIS-DEV-EUW"
+        },
+        "DatabricksLinkedService_properties_typeProperties_instancePoolId": {
+            "value": "1108-102648-fish103-pool-tlgsdcj6"
+        },
+        "DatabricksLinkedService_properties_typeProperties_newClusterVersion": {
+            "value": "12.2.x-scala2.12"
+        },
+        "FileSystemLinkedService_properties_typeProperties_host": {
+            "value": "@{linkedService().FolderName}"
+        },
+        "FileSystemLinkedService_properties_typeProperties_userId": {
+            "value": "@{linkedService().WindowsAuthUserName}"
+        },
+        "GenericAzureDataLakeLinkedService_properties_typeProperties_url": {
+            "value": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+        },
+        "KeyVaultLinkedService_properties_typeProperties_baseUrl": {
+            "value": "https://EUW-BIS-Keyvault-Dev.vault.azure.net/"
+        },
+        "SelfServeDataLakeLinkedService_properties_typeProperties_url": {
+            "value": "https://@{linkedService().DataLakeName}.dfs.core.windows.net"
+        },
+        "SqlServerLinkedService_properties_typeProperties_userName": {
+            "value": "@{linkedService().WindowsAuthUserName}"
+        },
+        "ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_Id": {
+            "value": "15"
+        },
+        "ActiveBatchMonitoringTrigger_properties_ActiveBatchMonitoringPipeline_parameters_LogicAppUrl": {
+            "value": "https://trggerfromadf.azurewebsites.net:443/api/triggerfromadf/triggers/manual/invoke?api-version=2022-05-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=X4AWHnY_RX0zpOtz7VWE1m-2CtWi5Mh_HZA0KHE4kKk"
+        }
+    }
+}

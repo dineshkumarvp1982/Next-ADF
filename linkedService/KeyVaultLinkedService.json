@@ -1,0 +1,11 @@
+{
+	"name": "KeyVaultLinkedService",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://EUW-BIS-Keyvault-Dev.vault.azure.net/"
+		}
+	}
+}

@@ -1,0 +1,136 @@
+{
+	"name": "ConversationsAggregateDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				},
+				{
+					"name": "flatten2"
+				},
+				{
+					"name": "flatten3"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "sort1"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          results as (data as (interval as string, metrics as (metric as string, stats as (count as short, current as double, denominator as boolean, max as integer, min as integer, numerator as boolean, ratio as double, sum as integer, target as double))[])[], group as (conversationId as string, direction as string, mediaType as string, queueId as string, userId as string, wrapUpCode as string))[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(results, results),",
+				"     mapColumn(",
+				"          data = results.data,",
+				"          group = results.group",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"flatten1 foldDown(unroll(data, data),",
+				"     mapColumn(",
+				"          interval = data.interval,",
+				"          metrics = data.metrics,",
+				"          group",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten2",
+				"flatten2 foldDown(unroll(metrics, metrics),",
+				"     mapColumn(",
+				"          conversationId = group.conversationId,",
+				"          direction = group.direction,",
+				"          mediaType = group.mediaType,",
+				"          queueId = group.queueId,",
+				"          userId = group.userId,",
+				"          wrapUpCode = group.wrapUpCode,",
+				"          metric = metrics.metric,",
+				"          count = metrics.stats.count,",
+				"          sum = metrics.stats.sum,",
+				"          current = metrics.stats.current,",
+				"          ratio = metrics.stats.ratio,",
+				"          interval",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten3",
+				"flatten3 derive(start_interval = split(interval,'/')[1],",
+				"          end_interval = split(interval,'/')[2]) ~> derivedColumn1",
+				"derivedColumn1 sort(asc(conversationId, false),",
+				"     asc(direction, false),",
+				"     asc(mediaType, false),",
+				"     asc(queueId, false),",
+				"     asc(userId, false),",
+				"     asc(wrapUpCode, false),",
+				"     asc(metric, false),",
+				"     asc(count, false),",
+				"     asc(sum, false),",
+				"     asc(ratio, false),",
+				"     asc(current, false),",
+				"     asc(start_interval, false),",
+				"     asc(end_interval, false)) ~> sort1",
+				"sort1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     saveOrder: 1,",
+				"     mapColumn(",
+				"          conversationId,",
+				"          direction,",
+				"          mediaType,",
+				"          queueId,",
+				"          userId,",
+				"          wrapUpCode,",
+				"          metric,",
+				"          count,",
+				"          sum,",
+				"          current,",
+				"          ratio,",
+				"          interval,",
+				"          start_interval,",
+				"          end_interval",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

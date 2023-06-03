@@ -1,0 +1,390 @@
+{
+	"name": "MoveLandingToDataLakePipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteMoveLandingToDataLakeStarted]",
+						"storedProcedureParameters": {
+							"MoveLandingToDataLakeID": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							},
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "Get Metadata",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DataLakeLandingBinaryDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"SourceFolderName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceFolderName",
+								"type": "Expression"
+							},
+							"SourceFileName": {
+								"value": "@if(empty(activity('WriteTaskStarted').output.firstRow.Extension),activity('WriteTaskStarted').output.firstRow.SourceFileName , concat(activity('WriteTaskStarted').output.firstRow.SourceFileName,'.',activity('WriteTaskStarted').output.firstRow.Extension))",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"childItems"
+					]
+				}
+			},
+			{
+				"name": "Filter Metadata",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Get Metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Metadata').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@equals(item().type, 'File')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "File Count Check",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Filter Metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('Filter Metadata').output.FilteredItemsCount, 1)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Error",
+							"description": "Error due to multiple files",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"url": "https://throw_an_error",
+								"method": "GET"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Copy and Delete File",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "File Count Check",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Filter Metadata').output.Value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "CopyToCurrent",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.03:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": false
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeLandingBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"SourceFolderName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceFolderName",
+											"type": "Expression"
+										},
+										"SourceFileName": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.FolderName,'/current')",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@if(equals(activity('WriteTaskStarted').output.firstRow.KeepOriginalFileNameCurrent,true ),item().name\n,concat(activity('WriteTaskStarted').output.firstRow.FileName,'.',activity('WriteTaskStarted').output.firstRow.Extension))",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "WriteTaskEnded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyToPartition",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteMoveLandingToDataLakeEnded]",
+								"storedProcedureParameters": {
+									"FileName": {
+										"value": {
+											"value": "@{item().name}",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "CopyToPartition",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Delete From Landing",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.03:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": true
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.FolderName,'/current')",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@if(equals(activity('WriteTaskStarted').output.firstRow.KeepOriginalFileNameCurrent,true ),item().name\n,concat(activity('WriteTaskStarted').output.firstRow.FileName,'.',activity('WriteTaskStarted').output.firstRow.Extension))",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.FolderName,'/',activity('WriteTaskStarted').output.firstRow.PartitionName)",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Delete From Landing",
+							"type": "Delete",
+							"dependsOn": [
+								{
+									"activity": "CopyToCurrent",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "DataLakeLandingBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"SourceFolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.SourceFolderName}",
+											"type": "Expression"
+										},
+										"SourceFileName": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								},
+								"enableLogging": false
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	}
+}

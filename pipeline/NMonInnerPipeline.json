@@ -1,0 +1,881 @@
+{
+	"name": "NMonInnerPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyDateDimenion",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ExecuteExportNotebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.01:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 120,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*.parquet",
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "SqlMISink",
+						"preCopyScript": "DELETE FROM Reference.Dim_Date",
+						"tableOption": "autoCreate"
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "DateKey",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DateKey",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "Date",
+									"type": "String"
+								},
+								"sink": {
+									"name": "Date",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DateDesc",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DateDesc",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DayName",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DayName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinDayOfWeek",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "FinDayOfWeek",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "DirDayOfWeek",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "DirDayOfWeek",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "FinWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MktWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MktWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYFinWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYFinWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinWeekNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "FinWeekNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "DirWeekNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "DirWeekNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "MktWeekNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "MktWeekNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "LyFinWeekNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "LyFinWeekNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "MonthNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "MonthNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "MonthName",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MonthName",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinMonth",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinMonth",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinMonthNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "FinMonthNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "DirSeasonCode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirSeasonCode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinSeasonCode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinSeasonCode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MktSeasonCode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MktSeasonCode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MktSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MktSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinYear",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinYear",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirYear",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirYear",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MktYear",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MktYear",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinYearNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "FinYearNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "DirYearNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "DirYearNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "MktYearNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "MktYearNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ProductWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductWeekNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "ProductWeekNo",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductDayOfWeek",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "ProductDayOfWeek",
+									"type": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductSeasonCode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ProductSeasonCode",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ProductSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductYear",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ProductYear",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductYearNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "ProductYearNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "TYProductSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TYProductSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYProductSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYProductSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYProductWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYProductWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YProductSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YProductSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YProductWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YProductWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirWeekSeqNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "DirWeekSeqNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "LYDirWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYDirWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYDirWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYDirWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YDirWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YDirWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YDirWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YDirWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YFinWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YFinWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YFinWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YFinWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FinWeekSeqNo",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "FinWeekSeqNo",
+									"type": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "FinWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "FinWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYFinWeekPrevious",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYFinWeekPrevious",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "WKProcessesInd",
+									"type": "String"
+								},
+								"sink": {
+									"name": "WKProcessesInd",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "AllDates",
+									"type": "Boolean"
+								},
+								"sink": {
+									"name": "AllDates",
+									"type": "Boolean"
+								}
+							},
+							{
+								"source": {
+									"name": "InsertedTimestamp",
+									"type": "String"
+								},
+								"sink": {
+									"name": "InsertedTimestamp",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "UpdatedTimestamp",
+									"type": "String"
+								},
+								"sink": {
+									"name": "UpdatedTimestamp",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "HB_CV",
+									"type": "String"
+								},
+								"sink": {
+									"name": "HB_CV",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "BrandWeek",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "BrandWeek",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DirBrandWeek",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "DirBrandWeek",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DirFinWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirFinWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirFinWeekStartDate",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirFinWeekStartDate",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYFinSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYFinSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TYDirSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TYDirSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "LYDirSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LYDirSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "2YDirSeasonStartWeek",
+									"type": "String"
+								},
+								"sink": {
+									"name": "2YDirSeasonStartWeek",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirFinSeason",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirFinSeason",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DirFinPeriod",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DirFinPeriod",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DataLakeNMonParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"table": "dim_date"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "NmonSqlDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": "Reference",
+							"table": "Dim_Date",
+							"ServerName": {
+								"value": "@pipeline().parameters.ServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@pipeline().parameters.DatabaseName",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "CopyClientDimension",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyDateDimenion",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.01:00:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 120,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*.parquet",
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "SqlMISink",
+						"preCopyScript": "DELETE FROM [Reference].[Client]"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ClientId",
+									"type": "string"
+								},
+								"sink": {
+									"name": "ClientId",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ClientName",
+									"type": "string"
+								},
+								"sink": {
+									"name": "ClientName",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DataLakeNMonParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"table": "dim_client"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "NmonSqlDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": "Reference",
+							"table": "Client",
+							"ServerName": {
+								"value": "@pipeline().parameters.ServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@pipeline().parameters.DatabaseName",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "ExecuteExportNotebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:30:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 120,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/release/notebooks/raw/nmon_dim_adf_to_staging"
+				},
+				"linkedServiceName": {
+					"referenceName": "DatabricksLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"MinWorkers": 1,
+						"MaxWorkers": 2
+					}
+				}
+			}
+		],
+		"parameters": {
+			"ServerName": {
+				"type": "string"
+			},
+			"DatabaseName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Stages"
+		},
+		"annotations": []
+	}
+}

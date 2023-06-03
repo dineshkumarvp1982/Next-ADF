@@ -1,0 +1,189 @@
+{
+	"name": "SelfServeFromSqlIntoDatabricks",
+	"properties": {
+		"description": "Copy large amount of data in bulk from database in parallel.",
+		"activities": [
+			{
+				"name": "For Each Partition Field",
+				"description": "ForEach activity to get the partition list from Lookup activity and then iterate each of them to Copy activity. ",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get Partition Field List",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Partition Field List').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy One Partition Field Into Delta Table",
+							"description": "Copy activity to copy each partition field from source database store to destination store.",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "SELECT @{pipeline().parameters.SourceColumns} \nFROM @{pipeline().parameters.SourceTableName} \nWHERE @{pipeline().parameters.DateColumnName} \nBETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' \nAND @{pipeline().parameters.PartitionField} = '@{item()[pipeline().parameters.PartitionField]}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureDatabricksDeltaLakeSink",
+									"importSettings": {
+										"type": "AzureDatabricksDeltaLakeImportCommand"
+									}
+								},
+								"enableStaging": true,
+								"stagingSettings": {
+									"linkedServiceName": {
+										"referenceName": "DataLakeLinkedService",
+										"type": "LinkedServiceReference"
+									},
+									"path": {
+										"value": "@pipeline().parameters.StagingFolder",
+										"type": "Expression"
+									},
+									"enableCompression": true
+								},
+								"parallelCopies": {
+									"value": "@pipeline().parameters.ParallelRunsLimit",
+									"type": "Expression"
+								},
+								"enableSkipIncompatibleRow": true
+							},
+							"inputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": "@pipeline().parameters.SourceServerName",
+										"DatabaseName": "@pipeline().parameters.SourceDatabaseName",
+										"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+										"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AzureDatabricksDeltaLakeDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"SinkDatabaseName": "@pipeline().parameters.SinkDatabaseName",
+										"SinkTableName": {
+											"value": "@pipeline().parameters.SinkTableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Get Partition Field List",
+				"description": "Lookup activity to retrieve the list of values to be used in the for each loop.",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT DISTINCT @{pipeline().parameters.PartitionField}\nFROM @{pipeline().parameters.SourceTableName}\nWHERE @{pipeline().parameters.DateColumnName} \nBETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' ",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SqlServerDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"ServerName": {
+								"value": "@pipeline().parameters.SourceServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@pipeline().parameters.SourceDatabaseName",
+								"type": "Expression"
+							},
+							"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+							"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+							"TableName": " "
+						}
+					},
+					"firstRowOnly": false
+				}
+			}
+		],
+		"parameters": {
+			"SourceServerName": {
+				"type": "string"
+			},
+			"SourceDatabaseName": {
+				"type": "string"
+			},
+			"SinkDatabaseName": {
+				"type": "string"
+			},
+			"SinkTableName": {
+				"type": "string"
+			},
+			"SourceTableName": {
+				"type": "string"
+			},
+			"StagingFolder": {
+				"type": "string"
+			},
+			"PartitionField": {
+				"type": "string"
+			},
+			"SourceColumns": {
+				"type": "string"
+			},
+			"ParallelRunsLimit": {
+				"type": "int"
+			},
+			"StartDate": {
+				"type": "string"
+			},
+			"EndDate": {
+				"type": "string"
+			},
+			"DateColumnName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Self Serve"
+		},
+		"annotations": []
+	}
+}

@@ -1,0 +1,183 @@
+{
+	"name": "SelfServeFromSqlParallel",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get Partition Field List",
+				"description": "Lookup activity to retrieve the list of values to be used in the for each loop.",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "SELECT DISTINCT @{pipeline().parameters.PartitionField}\nFROM @{pipeline().parameters.SourceTableName}\nWHERE \n@{pipeline().parameters.DateColumnName} BETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SqlServerDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"ServerName": {
+								"value": "@pipeline().parameters.SourceServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@pipeline().parameters.SourceDatabaseName",
+								"type": "Expression"
+							},
+							"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+							"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+							"TableName": " "
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "For Each Partition Field",
+				"description": "ForEach activity to get the partition list from lookup activity and then iterate each of them to copy activity. ",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Get Partition Field List",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Get Partition Field List').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "Copy Into Data Lake Parquet",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "SELECT @{pipeline().parameters.SourceColumns} FROM @{pipeline().parameters.SourceTableName} WHERE @{pipeline().parameters.DateColumnName} BETWEEN '@{pipeline().parameters.StartDate}' AND '@{pipeline().parameters.EndDate}' AND @{pipeline().parameters.PartitionField} = '@{item()[pipeline().parameters.PartitionField]}'",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"parallelCopies": 50
+							},
+							"inputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.SourceServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.SourceDatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+										"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SelfServeDataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@pipeline().parameters.DestinationDataLakeName",
+											"type": "Expression"
+										},
+										"FolderName": {
+											"value": "@pipeline().parameters.DestinationFolderName",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@concat(pipeline().parameters.SourceTableName,'_',pipeline().parameters.StartDate,'-',pipeline().parameters.EndDate,'_',item().record_type,'.parquet')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"SourceServerName": {
+				"type": "string"
+			},
+			"SourceDatabaseName": {
+				"type": "string"
+			},
+			"SourceTableName": {
+				"type": "string"
+			},
+			"StartDate": {
+				"type": "string"
+			},
+			"EndDate": {
+				"type": "string"
+			},
+			"DestinationFolderName": {
+				"type": "string"
+			},
+			"DestinationDataLakeName": {
+				"type": "string"
+			},
+			"DateColumnName": {
+				"type": "string"
+			},
+			"PartitionField": {
+				"type": "string"
+			},
+			"SourceColumns": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Self Serve"
+		},
+		"annotations": []
+	}
+}

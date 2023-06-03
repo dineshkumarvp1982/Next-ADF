@@ -1,0 +1,330 @@
+{
+	"name": "RawFormattedtoSQLPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteCopyRawFormattedToSQLStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"CopyRawFormattedToSQLSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "If Condition to check if Truncate table is true",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.TruncateTable, True)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CopyFromRawToSQLOnPrem",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									}
+								},
+								"sink": {
+									"type": "SqlServerSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.SourceFolderName}",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.SourceFileName}",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "CopyFromRawToSQLOnPrem_copy1",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Truncate Destination Table",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									}
+								},
+								"sink": {
+									"type": "SqlServerSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.SourceFolderName}",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.SourceFileName}",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Truncate Destination Table",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat('TRUNCATE TABLE',activity('WriteTaskStarted').output.firstRow.TableName,'; Select 1;')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "If Condition to check if Truncate table is true",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,48 @@
+{
+	"name": "FileSystemBinaryDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "FileSystemLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"WindowsAuthUserName": {
+					"value": "@dataset().WindowsAuthUserName",
+					"type": "Expression"
+				},
+				"WindowsAuthPasswordInKeyVault": {
+					"value": "@dataset().WindowsAuthPasswordInKeyVault",
+					"type": "Expression"
+				},
+				"FolderName": {
+					"value": "@dataset().FolderName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"WindowsAuthUserName": {
+				"type": "string"
+			},
+			"WindowsAuthPasswordInKeyVault": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@dataset().FileName",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}

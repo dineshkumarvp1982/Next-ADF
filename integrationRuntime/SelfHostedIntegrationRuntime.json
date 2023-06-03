@@ -1,0 +1,7 @@
+{
+	"name": "SelfHostedIntegrationRuntime",
+	"properties": {
+		"type": "SelfHosted",
+		"description": "Self hosted integration runtime for current environment."
+	}
+}

@@ -1,0 +1,93 @@
+{
+	"name": "ConversationsAttributesDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				},
+				{
+					"name": "filter1"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          address as string,",
+				"          divisions as (division as (id as string, selfUri as string), entities as (id as string, selfUri as string)[])[],",
+				"          endTime as string,",
+				"          id as string,",
+				"          participants as (address as string, alertingTimeoutMs as short, ani as string, aniName as string, attributes as ({Attrib.AccountNo} as string, {Attrib.Ani} as long, {Attrib.CalledAddress} as long, {Attrib.ConversationId} as string, {Attrib.Country} as string, {Attrib.DPAIVRStatus} as string, {Attrib.InitialLoadType} as short, {Attrib.IntReportGroup} as string, {Attrib.IsDpaPresented} as boolean, {Attrib.IsValidAccount} as boolean, {Attrib.IsValidDOB} as boolean, {Attrib.IsValidPostCode} as boolean, {Attrib.Language} as string, {Attrib.OriginalAni} as long, {Attrib.QueueId} as string, {Attrib.UTC_Offset} as boolean, CWC_allowACD as boolean, {Callback.CallsInQ} as short, {Info.CCxDPASuccess} as string, ZD_SearchType as string, ZD_SearchValue as integer, {Zen.CreateTicket} as string, {Zen.GetTicketByUserId} as string, {Zen.GetUserByANI} as string, {Zen.UpdateTicketDetails} as string, {info.GetLWTbyQueueSuccess} as string, {ivr.Priority} as short), callbacks as string[], calls as (afterCallWorkRequired as boolean, confined as boolean, connectedTime as string, direction as string, disconnectReasons as (code as short, phrase as string, type as string)[], disconnectType as string, disconnectedTime as string, held as boolean, id as string, initialState as string, muted as boolean, other as (addressDisplayable as string, addressNormalized as string, addressRaw as string, name as string, nameRaw as string), peerId as string, provider as string, recording as boolean, recordingState as string, segments as (disconnectType as string, endTime as string, howEnded as string, startTime as string, type as string)[], self as (addressDisplayable as string, addressNormalized as string, addressRaw as string, name as string, nameRaw as string), startAlertingTime as string, state as string)[], chats as string[], cobrowsesessions as string[], connectedTime as string, conversationRoutingData as (priority as short, queue as (id as string, selfUri as string), scoredAgents as string[], skills as string[]), dnis as string, emails as string[], endAcwTime as string, endTime as string, externalContactId as string, id as string, mediaRoles as string[], messages as string[], name as string, participantType as string, purpose as string, queueId as string, queueName as string, screenRecordingState as string, screenshares as string[], socialExpressions as string[], startAcwTime as string, startTime as string, userId as string, userUri as string, videos as string[], wrapup as (code as string, durationSeconds as short, endTime as string, name as string, tags as string[]), wrapupPrompt as string, wrapupRequired as boolean, wrapupTimeoutMs as integer)[],",
+				"          recentTransfers as (dateIssued as string, destination as (address as string, userId as string), id as string, initiator as (userId as string), state as string, transferType as string)[],",
+				"          recordingState as string,",
+				"          selfUri as string,",
+				"          startTime as string",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(participants, participants),",
+				"     mapColumn(",
+				"          UTC_Offset = participants.attributes.{Attrib.UTC_Offset},",
+				"          ZD_SearchType = participants.attributes.ZD_SearchType,",
+				"          GetUserByANI = participants.attributes.{Zen.GetUserByANI},",
+				"          CallsInQ = participants.attributes.{Callback.CallsInQ},",
+				"          IsDpaPresented = participants.attributes.{Attrib.IsDpaPresented},",
+				"          ConversationId = participants.attributes.{Attrib.ConversationId},",
+				"          DPAIVRStatus = participants.attributes.{Attrib.DPAIVRStatus},",
+				"          ZD_SearchValue = participants.attributes.ZD_SearchValue,",
+				"          CCxDPASuccess = participants.attributes.{Info.CCxDPASuccess},",
+				"          Country = participants.attributes.{Attrib.Country},",
+				"          language = participants.attributes.{Attrib.Language},",
+				"          QueueId = participants.attributes.{Attrib.QueueId},",
+				"          GetLWTbyQueueSuccess = participants.attributes.{info.GetLWTbyQueueSuccess},",
+				"          UpdateTicketDetails = participants.attributes.{Zen.UpdateTicketDetails},",
+				"          AccountNo = participants.attributes.{Attrib.AccountNo},",
+				"          IntReportGroup = participants.attributes.{Attrib.IntReportGroup}",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"flatten1 filter(!isNull(ConversationId)) ~> filter1",
+				"filter1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     filePattern:(concat($FileName,'.parquet')),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

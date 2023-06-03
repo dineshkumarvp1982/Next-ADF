@@ -1,0 +1,577 @@
+{
+	"name": "DeltaSqlPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteDeltaSqlStarted]",
+						"storedProcedureParameters": {
+							"DeltaSqlSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							},
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "iscloud source check",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "iscloud source check For Lookup WatermarkID",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceTypeID, true)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "DeltaSqlToRawFormattedPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaSqlToRawFormattedPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"ServerName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+										"type": "Expression"
+									},
+									"DatabaseName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+										"type": "Expression"
+									},
+									"TableName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+										"type": "Expression"
+									},
+									"Username": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+										"type": "Expression"
+									},
+									"PasswordInKeyVault": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+										"type": "Expression"
+									},
+									"WatermarkField": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.WatermarkField",
+										"type": "Expression"
+									},
+									"WatermarkValue": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.WatermarkValue",
+										"type": "Expression"
+									},
+									"LowerOffsetExpression": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.LowerOffsetExpression",
+										"type": "Expression"
+									},
+									"UpperOffsetExpression": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.UpperOffsetExpression",
+										"type": "Expression"
+									},
+									"MinRows": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.MinRows",
+										"type": "Expression"
+									},
+									"MaxRows": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.MaxRows",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									},
+									"NewWatermarkValue": {
+										"value": "@activity('LookupNewWatermark').output.firstRow.NewWatermarkValue",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "DeltaSqlToRawFormattedPipeline_MI",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaSqlToRawFormattedPipeline_MI",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"ServerName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+										"type": "Expression"
+									},
+									"DatabaseName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+										"type": "Expression"
+									},
+									"TableName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+										"type": "Expression"
+									},
+									"Username": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+										"type": "Expression"
+									},
+									"PasswordInKeyVault": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+										"type": "Expression"
+									},
+									"WatermarkField": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.WatermarkField",
+										"type": "Expression"
+									},
+									"WatermarkValue": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.WatermarkValue",
+										"type": "Expression"
+									},
+									"LowerOffsetExpression": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.LowerOffsetExpression",
+										"type": "Expression"
+									},
+									"UpperOffsetExpression": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.UpperOffsetExpression",
+										"type": "Expression"
+									},
+									"MinRows": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.MinRows",
+										"type": "Expression"
+									},
+									"MaxRows": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.MaxRows",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									},
+									"NewWatermarkValue": {
+										"value": "@activity('LookupNewWatermark_MI').output.firstRow.NewWatermarkValue",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "IfValidationJobNotNull",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "iscloud source check",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.ValidationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "RawFormattedToStagingValidatedPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "RawFormattedToStagingValidatedPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"ValidationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.ValidationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "IfTransformationJobNotNull",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "IfValidationJobNotNull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.TransformationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "StagingValidatedToStagingTransformedPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "StagingValidatedToStagingTransformedPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"TransformationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TransformationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "iscloud source check For Lookup WatermarkID",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceTypeID, true)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "LookupNewWatermark",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "SELECT MAX(@{activity('WriteTaskStarted').output.firstRow.WatermarkField}) as NewWatermarkValue FROM  @{activity('WriteTaskStarted').output.firstRow.TableName}",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": " @activity('WriteTaskStarted').output.firstRow.TableName"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "LookupNewWatermark_MI",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": {
+										"value": "SELECT MAX(@{activity('WriteTaskStarted').output.firstRow.WatermarkField}) as NewWatermarkValue FROM  @{activity('WriteTaskStarted').output.firstRow.TableName}",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "AzureSqlManagedInstanceDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"TableName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.TableName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WaterMarkTaskEnded",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "IfTransformationJobNotNull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceTypeID, true)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "WriteTaskEnded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteDeltaSqlEnded]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"WatermarkValue": {
+										"value": {
+											"value": "@activity('LookupNewWatermark').output.firstRow.NewWatermarkValue",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEnded_MI",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.00:15:00",
+								"retry": 1,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteDeltaSqlEnded]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"WatermarkValue": {
+										"value": {
+											"value": "@activity('LookupNewWatermark_MI').output.firstRow.NewWatermarkValue",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,14 @@
+{
+	"name": "DataLakeLandingLinkedService",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://bislandingdev.dfs.core.windows.net"
+		},
+		"connectVia": {
+			"referenceName": "AzureIntegrationRuntimeEUW",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

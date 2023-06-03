@@ -1,0 +1,540 @@
+{
+	"name": "FixedWidthRawOriginalToRawFormattedPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskEnded-ParseFailure",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "CopyToRawRejectedPartition-ParseFailure",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteRawOriginalToRawFormatted]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@pipeline().parameters.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"InRawFormatted": {
+							"value": null,
+							"type": "DateTimeOffset"
+						},
+						"InRawRejected": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"RowsCopied": {
+							"value": null,
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "IfRowsCopiedInsideRowCountExtremes",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LookupFormattedLog",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(\n\tor(\n\t\tequals(pipeline().parameters.MinRows, null),\n\t\tgreaterOrEquals(activity('LookupFormattedLog').output.firstRow.RowsFormatted, pipeline().parameters.MinRows)\n\t),\n\tor(\n\t\tequals(pipeline().parameters.MaxRows, null),\n\t\tlessOrEquals(activity('LookupFormattedLog').output.firstRow.RowsFormatted, pipeline().parameters.MaxRows)\n\t)\n)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "WriteTaskEnded-RowCountFailure",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyToRawRejectedPartition-RowCountFailure",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteRawOriginalToRawFormatted]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@pipeline().parameters.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"InRawFormatted": {
+										"value": null,
+										"type": "DateTimeOffset"
+									},
+									"InRawRejected": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"RowsCopied": {
+										"value": {
+											"value": "@activity('LookupFormattedLog').output.firstRow.RowsFormatted",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "CopyToRawRejectedPartition-RowCountFailure",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "DeleteRawFormattedCurrent",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": true
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "raw/original/@{pipeline().parameters.FolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{pipeline().parameters.FileName}.@{pipeline().parameters.Extension}",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "raw/rejected/@{pipeline().parameters.FolderName}/@{pipeline().parameters.PartitionName}",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{pipeline().parameters.FileName}.@{pipeline().parameters.Extension}",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "DeleteRawFormattedCurrent",
+							"type": "Delete",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "raw/formatted/@{pipeline().parameters.FolderName}/current/@{pipeline().parameters.FileName}.parquet",
+											"type": "Expression"
+										},
+										"FileName": " "
+									}
+								},
+								"enableLogging": false
+							}
+						},
+						{
+							"name": "ThrowException-RowCountFailure",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "WriteTaskEnded-RowCountFailure",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "sp_executesql",
+								"storedProcedureParameters": {
+									"statement": {
+										"value": {
+											"value": "THROW 51000, '@{activity('LookupFormattedLog').output.firstRow.RowsFormatted} rows is outside @{if(equals(pipeline().parameters.MinRows, null), 'null', pipeline().parameters.MinRows)} and @{if(equals(pipeline().parameters.MaxRows, null), 'null', pipeline().parameters.MaxRows)} bounds.', 1;",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEnded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyToRawFormattedPartition",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteRawOriginalToRawFormatted]",
+								"storedProcedureParameters": {
+									"SourceHistoryId": {
+										"value": {
+											"value": "@pipeline().parameters.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"InRawFormatted": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"InRawRejected": {
+										"value": null,
+										"type": "DateTimeOffset"
+									},
+									"RowsCopied": {
+										"value": {
+											"value": "@activity('LookupFormattedLog').output.firstRow.RowsFormatted",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "CopyToRawFormattedPartition",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": true
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "raw/formatted/@{pipeline().parameters.FolderName}/current/@{pipeline().parameters.FileName}.parquet",
+											"type": "Expression"
+										},
+										"FileName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "raw/formatted/@{pipeline().parameters.FolderName}/@{pipeline().parameters.PartitionName}/@{pipeline().parameters.FileName}.parquet",
+											"type": "Expression"
+										},
+										"FileName": " "
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "LookupFormattedLog",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "CopyToRawFormattedCurrent",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*.csv",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DataLakeDelimitedDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"FolderName": {
+								"value": "log/raw/formatted/@{pipeline().parameters.FolderName}/current/@{pipeline().parameters.FileName}.csv",
+								"type": "Expression"
+							},
+							"FileName": " ",
+							"HasHeader": "True",
+							"Delimiter": ","
+						}
+					}
+				}
+			},
+			{
+				"name": "CopyToRawFormattedCurrent",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": {
+						"value": "@pipeline().parameters.FixedWidthJob",
+						"type": "Expression"
+					},
+					"baseParameters": {
+						"folder": {
+							"value": "@pipeline().parameters.FolderName",
+							"type": "Expression"
+						},
+						"file": {
+							"value": "@pipeline().parameters.FileName",
+							"type": "Expression"
+						},
+						"partition": {
+							"value": "@pipeline().parameters.PartitionName",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DatabricksLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "CopyToRawRejectedPartition-ParseFailure",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CopyToRawFormattedCurrent",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureBlobFSSource",
+						"recursive": true
+					},
+					"sink": {
+						"type": "AzureBlobFSSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "DataLakeBinaryDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"FolderName": {
+								"value": "raw/original/@{pipeline().parameters.FolderName}/current",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@{pipeline().parameters.FileName}.@{pipeline().parameters.Extension}",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DataLakeBinaryDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"FolderName": {
+								"value": "raw/rejected/@{pipeline().parameters.FolderName}/@{pipeline().parameters.PartitionName}",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@{pipeline().parameters.FileName}.@{pipeline().parameters.Extension}",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"SourceHistoryId": {
+				"type": "int"
+			},
+			"FixedWidthJob": {
+				"type": "string"
+			},
+			"MinRows": {
+				"type": "int"
+			},
+			"MaxRows": {
+				"type": "int"
+			},
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"Extension": {
+				"type": "string"
+			},
+			"PartitionName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Stages"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

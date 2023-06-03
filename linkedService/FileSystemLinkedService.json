@@ -1,0 +1,34 @@
+{
+	"name": "FileSystemLinkedService",
+	"properties": {
+		"type": "FileServer",
+		"annotations": [],
+		"typeProperties": {
+			"host": "@{linkedService().FolderName}",
+			"userId": "@{linkedService().WindowsAuthUserName}",
+			"password": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "KeyVaultLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "@{linkedService().WindowsAuthPasswordInKeyVault}"
+			}
+		},
+		"parameters": {
+			"WindowsAuthUserName": {
+				"type": "String"
+			},
+			"WindowsAuthPasswordInKeyVault": {
+				"type": "String"
+			},
+			"FolderName": {
+				"type": "String"
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

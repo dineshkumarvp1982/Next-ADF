@@ -1,0 +1,112 @@
+{
+	"name": "TicketFCADataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "filter"
+				},
+				{
+					"name": "select"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          after_cursor as string,",
+				"          after_url as string,",
+				"          before_cursor as string,",
+				"          before_url as string,",
+				"          deleted_ticket_forms as (active as boolean, agent_conditions as string[], created_at as string, default as boolean, display_name as string, end_user_conditions as string[], end_user_visible as boolean, id as long, in_all_brands as boolean, name as string, position as string, raw_display_name as string, raw_name as string, restricted_brand_ids as string[], ticket_field_ids as long[], updated_at as string, url as string)[],",
+				"          end_of_stream as boolean,",
+				"          tickets as (allow_attachments as boolean, allow_channelback as boolean, assignee_id as long, brand_id as long, collaborator_ids as string[], created_at as string, custom_fields as (id as long, value as string)[], deleted_ticket_form_id as long, description as string, due_at as string, email_cc_ids as string[], external_id as string, fields as (id as long, value as string)[], follower_ids as string[], followup_ids as string[], forum_topic_id as string, generated_timestamp as integer, group_id as long, has_incidents as boolean, id as integer, is_public as boolean, organization_id as string, priority as string, problem_id as string, raw_subject as string, recipient as string, requester_id as long, satisfaction_rating as string, sharing_agreement_ids as string[], status as string, subject as string, submitter_id as long, tags as string[], ticket_form_id as long, type as string, updated_at as string, url as string, via as (channel as string, source as (from as (address as string, name as string), rel as string, to as (address as string, name as string))))[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(tickets, tickets),",
+				"     mapColumn(",
+				"          id = tickets.id,",
+				"          created_at = tickets.created_at,",
+				"          updated_at = tickets.updated_at,",
+				"          channel = tickets.via.channel,",
+				"          from_name = tickets.via.source.from.name,",
+				"          to_address = tickets.via.source.to.address,",
+				"          to_name = tickets.via.source.to.name,",
+				"          rel = tickets.via.source.rel,",
+				"          brand = tickets.brand_id,",
+				"          requester = tickets.requester_id,",
+				"          group = tickets.group_id,",
+				"          assignee = tickets.assignee_id,",
+				"          priority = tickets.priority,",
+				"          type = tickets.type,",
+				"          subject = tickets.subject,",
+				"          status = tickets.status,",
+				"          tags = tickets.tags,",
+				"          ticket_fields = tickets.custom_fields",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"flatten1 derive(tags = replace(replace(replace(replace(toString(tags),'[',''),']',''),'\"',''),',',', ')) ~> derivedColumn1",
+				"derivedColumn1 filter(instr(tags, 'fca_reportable') > 0) ~> filter",
+				"filter select(mapColumn(",
+				"          ticket_id = id,",
+				"          conversation_id = ticket_fields,",
+				"          ticket_updated_date = updated_at",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select",
+				"select sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     saveOrder: 1,",
+				"     mapColumn(",
+				"          ticket_id,",
+				"          conversation_id,",
+				"          ticket_updated_date",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

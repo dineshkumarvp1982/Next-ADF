@@ -1,0 +1,21 @@
+{
+	"name": "AzureBatchLinkedServiceforAAS",
+	"properties": {
+		"description": "This is for Analysis services and Powerbi management",
+		"annotations": [],
+		"type": "AzureBatch",
+		"typeProperties": {
+			"batchUri": "https://babisdeveuw.westeurope.batch.azure.com",
+			"poolName": "poolaasrefresh",
+			"accountName": "babisdeveuw",
+			"linkedServiceName": {
+				"referenceName": "AzureBatchStorageLinkedServiceAAS",
+				"type": "LinkedServiceReference"
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

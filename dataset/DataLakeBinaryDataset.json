@@ -1,0 +1,30 @@
+{
+	"name": "DataLakeBinaryDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DataLakeLinkedService",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobFSFile",
+		"typeProperties": {
+			"fileName": {
+				"value": "@dataset().FileName",
+				"type": "Expression"
+			},
+			"folderPath": {
+				"value": "@dataset().FolderName",
+				"type": "Expression"
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

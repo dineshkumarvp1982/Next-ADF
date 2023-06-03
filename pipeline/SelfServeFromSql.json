@@ -1,0 +1,198 @@
+{
+	"name": "SelfServeFromSql",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfIsParquet",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@pipeline().parameters.IsParquet",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CopyToDataLakeDelimited",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@pipeline().parameters.SourceQuery",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.SourceServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.SourceDatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+										"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SelfServeDataLakeDelimitedDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@pipeline().parameters.DestinationDataLakeName",
+											"type": "Expression"
+										},
+										"FolderName": {
+											"value": "@pipeline().parameters.DestinationFolderName",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.DestinationFileName",
+											"type": "Expression"
+										},
+										"HasHeader": true,
+										"Delimiter": ","
+									}
+								}
+							]
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "CopyToDataLakeParquet",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@pipeline().parameters.SourceQuery",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@pipeline().parameters.SourceServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@pipeline().parameters.SourceDatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": "Next-PLC\\Admin-BIS-DBA",
+										"WindowsAuthPasswordInKeyVault": "AdminBISDBA",
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SelfServeDataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@pipeline().parameters.DestinationDataLakeName",
+											"type": "Expression"
+										},
+										"FolderName": {
+											"value": "@pipeline().parameters.DestinationFolderName",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@pipeline().parameters.DestinationFileName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"SourceServerName": {
+				"type": "string"
+			},
+			"SourceDatabaseName": {
+				"type": "string"
+			},
+			"SourceQuery": {
+				"type": "string"
+			},
+			"DestinationDataLakeName": {
+				"type": "string"
+			},
+			"DestinationFolderName": {
+				"type": "string"
+			},
+			"DestinationFileName": {
+				"type": "string"
+			},
+			"IsParquet": {
+				"type": "bool",
+				"defaultValue": true
+			}
+		},
+		"folder": {
+			"name": "Self Serve"
+		},
+		"annotations": []
+	}
+}

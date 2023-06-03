@@ -1,0 +1,373 @@
+{
+	"name": "DeltaZendeskApiToJsonPageExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CheckUntilLastPage",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(contains(variables('IsEmptyPage'),'true'),or(variables('IsGetDataFailed'),variables('IsCopyDataFailed')))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "IncrementTempPageNumber",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntTempCounter",
+								"value": {
+									"value": "@string(add(int(variables('IntCounter')),1))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IncrementPageNumber",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementTempPageNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntCounter",
+								"value": {
+									"value": "@variables('IntTempCounter')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "CopyDataIfNextPageLoad",
+							"type": "Switch",
+							"dependsOn": [
+								{
+									"activity": "IncrementPageNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@pipeline().parameters.ApiMethod",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "POST",
+										"activities": [
+											{
+												"name": "Wait1",
+												"type": "Wait",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"waitTimeInSeconds": 1
+												}
+											}
+										]
+									},
+									{
+										"value": "GET",
+										"activities": [
+											{
+												"name": "ZendeskExportToJsonByPageLevelGet",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "RestSource",
+														"httpRequestTimeout": "00:01:40",
+														"requestInterval": "00.00:00:00.010",
+														"requestMethod": "GET",
+														"additionalHeaders": {
+															"Authorization": {
+																"value": "@concat('Bearer ',pipeline().parameters.AuthorizationKey)",
+																"type": "Expression"
+															},
+															"Content-Type": "application/json"
+														},
+														"paginationRules": {
+															"supportRFC5988": "true"
+														}
+													},
+													"sink": {
+														"type": "AzureBlobFSSink"
+													},
+													"enableStaging": false
+												},
+												"inputs": [
+													{
+														"referenceName": "RestApiDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"BaseURL": {
+																"value": "@concat(pipeline().parameters.ApiUrl,variables('IntCounter'))",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DataLakeJsonDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"FolderName": {
+																"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+																"type": "Expression"
+															},
+															"FileName": {
+																"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('IntCounter')),'.json')",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "CopyFailGet",
+												"type": "Fail",
+												"dependsOn": [
+													{
+														"activity": "ZendeskExportToJsonByPageLevelGet",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"message": "CopyFail",
+													"errorCode": "200"
+												}
+											},
+											{
+												"name": "CopyDataFailedGet",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "CopyFailGet",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "IsCopyDataFailed",
+													"value": {
+														"value": "@bool(1)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								]
+							}
+						},
+						{
+							"name": "Api Method If Condition",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "CopyDataIfNextPageLoad",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(pipeline().parameters.ApiMethod,'POST')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "GetApiDataGet",
+										"description": "Get Access Token",
+										"type": "WebActivity",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"url": {
+												"value": "@concat(pipeline().parameters.ApiUrl,variables('IntCounter'))",
+												"type": "Expression"
+											},
+											"method": "GET",
+											"headers": {
+												"Content-Type": {
+													"value": "application/json",
+													"type": "Expression"
+												},
+												"Authorization": {
+													"value": "@concat('Bearer ',pipeline().parameters.AuthorizationKey)",
+													"type": "Expression"
+												}
+											}
+										}
+									},
+									{
+										"name": "SetIsEmptyPage",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "IsEmptyPage",
+											"value": {
+												"value": "@if(contains(coalesce(activity('GetApiDataGet').output.next_page,'false'), 'false'),'true','false')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "GetApiDataFailGet",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "GetApiDataFailed",
+											"errorCode": "100"
+										}
+									},
+									{
+										"name": "IsGetDataFailedGet",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "IsGetDataFailed",
+											"value": {
+												"value": "@bool(1)",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string"
+			},
+			"ApiUrl": {
+				"type": "string"
+			},
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"IsPageExtract": {
+				"type": "string"
+			},
+			"PageName": {
+				"type": "string"
+			},
+			"Requestbody": {
+				"type": "string"
+			},
+			"HostName": {
+				"type": "string"
+			},
+			"AuthorizationKey": {
+				"type": "string"
+			},
+			"ApiMethod": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"IntCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IntTempCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IsEmptyPage": {
+				"type": "String"
+			},
+			"DummyEmptyPage": {
+				"type": "Array",
+				"defaultValue": [
+					"false"
+				]
+			},
+			"IsGetDataFailed": {
+				"type": "Boolean",
+				"defaultValue": false
+			},
+			"IsCopyDataFailed": {
+				"type": "Boolean",
+				"defaultValue": false
+			},
+			"DataCopyMethod": {
+				"type": "String",
+				"defaultValue": "POST"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"annotations": []
+	}
+}

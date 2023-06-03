@@ -1,0 +1,89 @@
+{
+	"name": "PublishedFormsDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination",
+					"description": "Export data to GenericDataLakeParquetDataSet"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string (\"\"),",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          entities as (contextId as string, id as string, modifiedDate as string, name as string, published as boolean, questionGroups as string[], selfUri as string, weightMode as string)[],",
+				"          firstUri as string,",
+				"          lastUri as string,",
+				"          pageCount as boolean,",
+				"          pageNumber as boolean,",
+				"          pageSize as short,",
+				"          selfUri as string,",
+				"          total as short",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(entities, entities),",
+				"     mapColumn(",
+				"          contextId = entities.contextId,",
+				"          id = entities.id,",
+				"          modifiedDate = entities.modifiedDate,",
+				"          name = entities.name,",
+				"          published = entities.published,",
+				"          questionGroups = entities.questionGroups,",
+				"          weightMode = entities.weightMode",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"flatten1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     mapColumn(",
+				"          contextId,",
+				"          id,",
+				"          modifiedDate,",
+				"          name,",
+				"          published,",
+				"          questionGroups,",
+				"          weightMode",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

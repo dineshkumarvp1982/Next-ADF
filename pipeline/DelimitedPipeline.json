@@ -1,0 +1,286 @@
+{
+	"name": "DelimitedPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "DelimitedRawOriginalToRawFormattedPipeline",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "DelimitedRawOriginalToRawFormattedPipeline",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"SourceHistoryId": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+							"type": "Expression"
+						},
+						"HasHeader": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.HasHeader",
+							"type": "Expression"
+						},
+						"Delimiter": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.Delimiter",
+							"type": "Expression"
+						},
+						"MinRows": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.MinRows",
+							"type": "Expression"
+						},
+						"MaxRows": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.MaxRows",
+							"type": "Expression"
+						},
+						"FolderName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+							"type": "Expression"
+						},
+						"FileName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+							"type": "Expression"
+						},
+						"Extension": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.Extension",
+							"type": "Expression"
+						},
+						"PartitionName": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+							"type": "Expression"
+						},
+						"json_output": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.json_output",
+							"type": "Expression"
+						},
+						"LoadDate": {
+							"value": "@activity('WriteTaskStarted').output.firstRow.LoadDate",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "IfValidationJobNotNull",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "DelimitedRawOriginalToRawFormattedPipeline",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.ValidationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "RawFormattedToStagingValidatedPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "RawFormattedToStagingValidatedPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"ValidationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.ValidationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "IfTransformationJobNotNull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "IfTransformationJobNotNull",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "IfValidationJobNotNull",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.TransformationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "StagingValidatedToStagingTransformedPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "StagingValidatedToStagingTransformedPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"SourceHistoryId": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+										"type": "Expression"
+									},
+									"TransformationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TransformationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteDelimitedStarted]",
+						"storedProcedureParameters": {
+							"DelimitedSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							},
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

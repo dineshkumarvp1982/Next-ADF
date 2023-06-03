@@ -1,0 +1,310 @@
+{
+	"name": "ParquetToDelimitedOnPremPipeline",
+	"properties": {
+		"description": "pipeline to export a parquet file as a delimited file to an on premise file share",
+		"activities": [
+			{
+				"name": "ExportToDelimited",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "WriteStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@activity('WriteStarted').output.firstRow.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@activity('WriteStarted').output.firstRow.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@activity('WriteStarted').output.firstRow.DataLakeDirectory",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@activity('WriteStarted').output.firstRow.ParquetFileName",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "GenericDelimitedOnPremDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"Folder": {
+								"value": "@activity('WriteStarted').output.firstRow.OnPremiseFolder",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@activity('WriteStarted').output.firstRow.OnPremiseFileNameFormatted",
+								"type": "Expression"
+							},
+							"Delimiter": {
+								"value": "@activity('WriteStarted').output.firstRow.Delimiter",
+								"type": "Expression"
+							},
+							"QuoteChar": {
+								"value": "@activity('WriteStarted').output.firstRow.QuoteChar",
+								"type": "Expression"
+							},
+							"EscapeChar": {
+								"value": "@activity('WriteStarted').output.firstRow.EscapeChar",
+								"type": "Expression"
+							},
+							"Encoding": {
+								"value": "@activity('WriteStarted').output.firstRow.Encoding",
+								"type": "Expression"
+							},
+							"FirstRowAsHeader": {
+								"value": "@activity('WriteStarted').output.firstRow.FirstRowAsHeader",
+								"type": "Expression"
+							},
+							"WindowsAuthUserName": {
+								"value": "@activity('WriteStarted').output.firstRow.WindowsAuthUserName",
+								"type": "Expression"
+							},
+							"WindowsAuthPasswordInKeyVault": {
+								"value": "@activity('WriteStarted').output.firstRow.WindowsAuthPasswordInKeyVault",
+								"type": "Expression"
+							},
+							"NullValue": {
+								"value": "@activity('WriteStarted').output.firstRow.NullValue",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "WriteFinished",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ExportToDelimited",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteExportFileParquetToCSVEnded]",
+					"storedProcedureParameters": {
+						"FilesWritten": {
+							"value": {
+								"value": "@activity('ExportToDelimited').output.FilesWritten",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"rowsCopied": {
+							"value": {
+								"value": "@activity('ExportToDelimited').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "WriteStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteExportFileParquetToCSVStarted]",
+						"storedProcedureParameters": {
+							"ExportFileParquetToCSVID": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ID",
+									"type": "Expression"
+								}
+							},
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@convertFromUtc(utcNow(), 'GMT Standard Time')",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "IfDeleteTrue",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "ExportToDelimited",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@activity('WriteStarted').output.firstRow.DeleteOnCompletion",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "DeleteParquet",
+							"type": "Delete",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "GenericDataLakeParquetDataSet",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@activity('WriteStarted').output.firstRow.DataLakeName",
+											"type": "Expression"
+										},
+										"FileSystem": {
+											"value": "@activity('WriteStarted').output.firstRow.DataLakeFileSystem",
+											"type": "Expression"
+										},
+										"Directory": {
+											"value": "@activity('WriteStarted').output.firstRow.DataLakeDirectory",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@activity('WriteStarted').output.firstRow.ParquetFileName",
+											"type": "Expression"
+										},
+										"Compression": "Snappy"
+									}
+								},
+								"enableLogging": false,
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	}
+}

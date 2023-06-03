@@ -1,0 +1,80 @@
+{
+	"name": "GenericDataLakeExcelDataSet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "GenericAzureDataLakeLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DataLakeName": {
+					"value": "@dataset().datalakename",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"datalakename": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"filesystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			},
+			"directory": {
+				"type": "string"
+			},
+			"filename": {
+				"type": "string"
+			},
+			"worksheetindex": {
+				"type": "string",
+				"defaultValue": "0"
+			},
+			"range": {
+				"type": "string",
+				"defaultValue": null
+			},
+			"nullvalue": {
+				"type": "string",
+				"defaultValue": null
+			},
+			"firstrowasheader": {
+				"type": "bool",
+				"defaultValue": true
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().filename",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().directory",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().filesystem",
+					"type": "Expression"
+				}
+			},
+			"sheetIndex": {
+				"value": "@int(dataset().worksheetindex)",
+				"type": "Expression"
+			},
+			"range": {
+				"value": "@coalesce(dataset().range,'')",
+				"type": "Expression"
+			},
+			"firstRowAsHeader": true,
+			"nullValue": {
+				"value": "@coalesce(dataset().nullvalue,'')",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

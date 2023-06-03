@@ -1,0 +1,22 @@
+{
+	"name": "AzureBatchStorageLinkedServiceAAS",
+	"properties": {
+		"description": "Linked storage associated with AzureBatchLinkedServiceforAAS",
+		"annotations": [],
+		"type": "AzureBlobStorage",
+		"typeProperties": {
+			"connectionString": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "KeyVaultLinkedService",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "batchstorage-connectionstring"
+			}
+		},
+		"connectVia": {
+			"referenceName": "SelfHostedIntegrationRuntime",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

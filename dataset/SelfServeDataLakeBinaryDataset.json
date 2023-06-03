@@ -1,0 +1,41 @@
+{
+	"name": "SelfServeDataLakeBinaryDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "SelfServeDataLakeLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DataLakeName": {
+					"value": "@dataset().DataLakeName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"DataLakeName": {
+				"type": "string"
+			},
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().FileName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().FolderName",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}

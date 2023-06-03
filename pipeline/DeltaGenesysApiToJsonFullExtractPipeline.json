@@ -1,0 +1,482 @@
+{
+	"name": "DeltaGenesysApiToJsonFullExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CheckUntilLastBatch",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(contains(variables('IsEndofStream'),'true'),equals(activity('CopyFail')?.output.value?.errorCode,200))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "IncrementTempSequenceNumber",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntTempCounter",
+								"value": {
+									"value": "@string(add(int(variables('IntCounter')),1))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IncrementSequenceNumber",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementTempSequenceNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntCounter",
+								"value": {
+									"value": "@variables('IntTempCounter')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetStartInterval",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementSequenceNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TempStartInterval",
+								"value": {
+									"value": "@if(equals(variables('IntCounter'),'1'),formatDateTime(pipeline().parameters.StartInterval,'yyyy-MM-ddTHH:mm:ss.000Z'),formatDateTime(variables('TempEndInterval'),'yyyy-MM-ddTHH:mm:ss.000Z'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetEndInterval",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetStartInterval",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TempEndInterval",
+								"value": {
+									"value": "@string(formatDateTime(addMinutes(formatDateTime(variables('TempStartInterval'),'yyyy-MM-ddTHH:mm:ss.000Z'),int(pipeline().parameters.BatchInMinutes))))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "GetApiInterval",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetEndInterval",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Interval",
+								"value": {
+									"value": "@concat(formatDateTime(variables('TempStartInterval'),'yyyy-MM-ddTHH:mm:ss.000Z'),'/',formatDateTime(variables('TempEndInterval'),'yyyy-MM-ddTHH:mm:ss.000Z'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IfPostApiMethod",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "GetApiInterval",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(pipeline().parameters.ApiMethod, 'POST')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "FullGetExportToJson",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "RestSource",
+												"httpRequestTimeout": "00:01:40",
+												"requestInterval": "00.00:00:00.010",
+												"requestMethod": "GET",
+												"additionalHeaders": {
+													"Authorization": {
+														"value": "@concat('Bearer ', pipeline().parameters.AccessToken)",
+														"type": "Expression"
+													},
+													"Host": {
+														"value": "@pipeline().parameters.HostName",
+														"type": "Expression"
+													}
+												},
+												"paginationRules": {
+													"supportRFC5988": "true"
+												}
+											},
+											"sink": {
+												"type": "AzureBlobFSSink"
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "GenesysApiDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"BaseURL": {
+														"value": "@pipeline().parameters.ApiUrl",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DataLakeJsonDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('IntCounter')),'.json')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "FullPostExportToJson",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "RestSource",
+												"httpRequestTimeout": "00:01:40",
+												"requestInterval": "00.00:00:00.010",
+												"requestMethod": "POST",
+												"requestBody": {
+													"value": "@replace(string(pipeline().parameters.Requestbody),'var_interval',variables('Interval'))",
+													"type": "Expression"
+												},
+												"additionalHeaders": {
+													"Authorization": {
+														"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+														"type": "Expression"
+													},
+													"Host": {
+														"value": "@pipeline().parameters.HostName",
+														"type": "Expression"
+													},
+													"Content-Type": "application/json"
+												},
+												"paginationRules": {
+													"supportRFC5988": "true"
+												}
+											},
+											"sink": {
+												"type": "AzureBlobFSSink"
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "GenesysApiDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"BaseURL": {
+														"value": "@pipeline().parameters.ApiUrl",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DataLakeJsonDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('IntCounter')),'.json')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "CopyFail",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "FullPostExportToJson",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "CopyFail",
+											"errorCode": "200"
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "IsEndOfStream",
+							"description": "Assign Access Token To Variable",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IfPostApiMethod",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IsEndofStream",
+								"value": {
+									"value": "@if(equals(formatDateTime(pipeline().parameters.EndInterval,'yyyy-MM-dd'),formatDateTime(variables('TempEndInterval'),'yyyy-MM-dd')),'true','false')",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2022/10/19"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://api.euw2.pure.cloud/api/v2/analytics/conversations/aggregates/query"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/genesys/v2/conversation_aggregate_data"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "api.euw2.pure.cloud"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "JlUgdadar85E4kRDyyoMJvEz-IFSQBbwVkIflOci4FWJ_mlD0DnrW8V7wRap0e4dfNOfps_GpQA0zp5mtYhLyQ"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "conversation_aggregate_data"
+			},
+			"Requestbody": {
+				"type": "string",
+				"defaultValue": {
+					"interval": "var_interval",
+					"granularity": "PT30M",
+					"groupBy": [
+						"addressFrom",
+						"addressTo",
+						"agentScore",
+						"ani",
+						"conversationId",
+						"convertedFrom",
+						"convertedTo",
+						"direction",
+						"disconnectType",
+						"divisionId",
+						"dnis",
+						"edgeId",
+						"externalMediaCount",
+						"externalOrganizationId",
+						"flaggedReason",
+						"flowOutType",
+						"groupId",
+						"interactionType",
+						"journeyActionId",
+						"journeyActionMapId",
+						"journeyActionMapVersion",
+						"journeyCustomerId",
+						"journeyCustomerIdType",
+						"journeyCustomerSessionId",
+						"journeyCustomerSessionIdType",
+						"mediaCount",
+						"mediaType",
+						"messageType",
+						"originatingDirection",
+						"outboundCampaignId",
+						"outboundContactId",
+						"outboundContactListId",
+						"participantName",
+						"peerId",
+						"provider",
+						"purpose",
+						"queueId",
+						"remote",
+						"requestedLanguageId",
+						"requestedRoutingSkillId",
+						"roomId",
+						"routingPriority",
+						"scoredAgentId",
+						"sessionDnis",
+						"sessionId",
+						"stationId",
+						"userId",
+						"wrapUpCode"
+					],
+					"views": [],
+					"metrics": [
+						"nBlindTransferred",
+						"nConnected",
+						"nConsult",
+						"nConsultTransferred",
+						"nError",
+						"nOffered",
+						"nOutbound",
+						"nOutboundAbandoned",
+						"nOutboundAttempted",
+						"nOutboundConnected",
+						"nOverSla",
+						"nStateTransitionError",
+						"nTransferred",
+						"oExternalMediaCount",
+						"oMediaCount",
+						"oServiceLevel",
+						"oServiceTarget",
+						"tAbandon",
+						"tAcd",
+						"tAcw",
+						"tAgentResponseTime",
+						"tAlert",
+						"tAnswered",
+						"tContacting",
+						"tDialing",
+						"tFlowOut",
+						"tHandle",
+						"tHeld",
+						"tHeldComplete",
+						"tIvr",
+						"tMonitoring",
+						"tNotResponding",
+						"tShortAbandon",
+						"tTalk",
+						"tTalkComplete",
+						"tUserResponseTime",
+						"tVoicemail",
+						"tWait"
+					]
+				}
+			},
+			"ApiMethod": {
+				"type": "string",
+				"defaultValue": "POST"
+			},
+			"BatchInMinutes": {
+				"type": "string",
+				"defaultValue": "1440"
+			},
+			"StartInterval": {
+				"type": "string"
+			},
+			"EndInterval": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"IntCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IntTempCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"TempStartInterval": {
+				"type": "String"
+			},
+			"TempEndInterval": {
+				"type": "String"
+			},
+			"Interval": {
+				"type": "String"
+			},
+			"IsEndofStream": {
+				"type": "String"
+			},
+			"TempApiUrl": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	}
+}

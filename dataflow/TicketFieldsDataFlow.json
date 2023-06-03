@@ -1,0 +1,120 @@
+{
+	"name": "TicketFieldsDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten1"
+				},
+				{
+					"name": "sort1"
+				},
+				{
+					"name": "flatten2"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          count as integer,",
+				"          next_page as string,",
+				"          previous_page as string,",
+				"          ticket_fields as (active as boolean, agent_description as string, collapsed_for_agents as boolean, created_at as string, custom_field_options as (default as boolean, id as long, name as string, raw_name as string, value as string)[], description as string, editable_in_portal as boolean, id as long, position as integer, raw_description as string, raw_title as string, raw_title_in_portal as string, regexp_for_validation as string, removable as boolean, required as boolean, required_in_portal as boolean, sub_type_id as boolean, system_field_options as (name as string, value as string)[], tag as string, title as string, title_in_portal as string, type as string, updated_at as string, url as string, visible_in_portal as boolean)[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: false,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(ticket_fields, ticket_fields),",
+				"     mapColumn(",
+				"          ticket_fields_id = ticket_fields.id,",
+				"          type = ticket_fields.type,",
+				"          title = ticket_fields.title,",
+				"          position = ticket_fields.position,",
+				"          is_active = ticket_fields.active,",
+				"          is_required = ticket_fields.required,",
+				"          tag = ticket_fields.tag,",
+				"          agent_description = ticket_fields.agent_description,",
+				"          custom_field_options = ticket_fields.custom_field_options",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten1",
+				"flatten2 sort(asc(ticket_fields_id, false),",
+				"     asc(type, false),",
+				"     asc(title, false),",
+				"     asc(custom_field_option_id, false),",
+				"     asc(custom_field_option_name, false)) ~> sort1",
+				"flatten1 foldDown(unroll(custom_field_options, custom_field_options),",
+				"     mapColumn(",
+				"          ticket_fields_id,",
+				"          type,",
+				"          title,",
+				"          position,",
+				"          is_active,",
+				"          is_required,",
+				"          tag,",
+				"          agent_description,",
+				"          custom_field_option_id = custom_field_options.id,",
+				"          custom_field_option_name = custom_field_options.name,",
+				"          custom_field_option_value = custom_field_options.value,",
+				"          custom_field_option_default = custom_field_options.default",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten2",
+				"sort1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     saveOrder: 1,",
+				"     mapColumn(",
+				"          ticket_fields_id,",
+				"          type,",
+				"          title,",
+				"          position,",
+				"          is_active,",
+				"          is_required,",
+				"          tag,",
+				"          agent_description,",
+				"          custom_field_option_id,",
+				"          custom_field_option_name,",
+				"          custom_field_option_value,",
+				"          custom_field_option_default",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

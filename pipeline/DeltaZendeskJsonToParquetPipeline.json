@@ -1,0 +1,448 @@
+{
+	"name": "DeltaZendeskJsonToParquetPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "AssignJsonFolderName",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "JsonFolderName",
+					"value": {
+						"value": "@concat(concat(concat(replace(pipeline().parameters.FolderName,'/raw/',''),'/'),pipeline().parameters.PartitionName),'/')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "AssignParquetFolderName",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "AssignJsonFolderName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ParquetFolderName",
+					"value": {
+						"value": "@concat(concat(replace(pipeline().parameters.FolderName,'/raw/original','formatted'),'/parquet/'),pipeline().parameters.PartitionName)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SwitchDataFlow",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "AssignParquetFolderName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@pipeline().parameters.TransformationJob",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "TicketDataDataFlow",
+							"activities": [
+								{
+									"name": "TicketDataDataflow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "TicketDataDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 32,
+											"computeType": "MemoryOptimized"
+										},
+										"traceLevel": "Coarse"
+									}
+								},
+								{
+									"name": "TicketFCADataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [
+										{
+											"activity": "TicketDataDataflow",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "TicketFCADataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@if(equals(pipeline().parameters.DataLakeName, 'bisdatalakev2preprod'), pipeline().parameters.DataLakeName, if(equals(pipeline().parameters.DataLakeName, 'bisdatalakedevv2'), pipeline().parameters.DataLakeName, 'mipssdatalakeprod'))",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@if(equals(pipeline().parameters.DataLakeName, 'bisdatalakev2preprod'), pipeline().parameters.DataLakeFileSystem, if(equals(pipeline().parameters.DataLakeName, 'bisdatalakedevv2'), pipeline().parameters.DataLakeFileSystem, 'self-service'))",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@if(equals(pipeline().parameters.DataLakeName, 'bisdatalakev2preprod'), 'formatted/fca_tickets', if(equals(pipeline().parameters.DataLakeName, 'formatted/fca_tickets'), pipeline().parameters.DataLakeName, 'fca_tickets'))",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(concat(concat(concat(concat('dataexport_','_'),utcnow('yyyy')),utcnow('MM')), utcnow('dd')), utcnow('hh')), utcnow('mm'), utcnow('ss')))",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 32,
+											"computeType": "MemoryOptimized"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						},
+						{
+							"value": "TicketFieldsDataFlow",
+							"activities": [
+								{
+									"name": "TicketFieldsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "TicketFieldsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "UsersDataFlow",
+							"activities": [
+								{
+									"name": "UsersDataFlow",
+									"description": "Flattens JSON from https://next.zendesk.com/api/v2/users? with specific columns",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "04:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "UsersDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 8,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Copy Parquet File To Current",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "SwitchDataFlow",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"wildcardFolderPath": {
+								"value": "@variables('ParquetFolderName')",
+								"type": "Expression"
+							},
+							"wildcardFileName": {
+								"value": "@concat(pipeline().parameters.FileName,'*.parquet')",
+								"type": "Expression"
+							},
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@variables('ParquetFolderName')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(pipeline().parameters.FileName,'.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@concat(replace(pipeline().parameters.FolderName,'/raw/original','formatted'),'/parquet/current/')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(pipeline().parameters.FileName,'.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"TransformationJob": {
+				"type": "string",
+				"defaultValue": "TicketDataDataFlow"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/zendesk/v2/ticket_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "ticket_data"
+			},
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2022/09/20"
+			},
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"DataLakeFileSystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			}
+		},
+		"variables": {
+			"ParquetFolderName": {
+				"type": "String"
+			},
+			"JsonFolderName": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"annotations": []
+	}
+}

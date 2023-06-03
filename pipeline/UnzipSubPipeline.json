@@ -1,0 +1,123 @@
+{
+	"name": "UnzipSubPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "UnzipFile",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.02:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "BinarySource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"deleteFilesAfterCompletion": false
+						},
+						"formatSettings": {
+							"type": "BinaryReadSettings",
+							"compressionProperties": {
+								"type": "ZipDeflateReadSettings",
+								"preserveZipFileNameAsFolder": false
+							}
+						}
+					},
+					"sink": {
+						"type": "BinarySink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "DataLakeBinaryZipSource",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.SourceDataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.SourceFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@pipeline().parameters.SourceDirectory",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@pipeline().parameters.SourceFileName",
+								"type": "Expression"
+							},
+							"CompressionType": {
+								"value": "@pipeline().parameters.CompressionType",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DataLakeBinaryUnzip",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DestinationFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@pipeline().parameters.DestinationDirectory",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"SourceDataLakeName": {
+				"type": "string"
+			},
+			"SourceFileSystem": {
+				"type": "string"
+			},
+			"SourceDirectory": {
+				"type": "string"
+			},
+			"SourceFileName": {
+				"type": "string"
+			},
+			"DestinationDataLakeName": {
+				"type": "string"
+			},
+			"DestinationFileSystem": {
+				"type": "string"
+			},
+			"DestinationDirectory": {
+				"type": "string"
+			},
+			"CompressionType": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Stages"
+		},
+		"annotations": []
+	}
+}

@@ -1,0 +1,417 @@
+{
+	"name": "ExcelPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:01:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteExcelStarted]",
+						"storedProcedureParameters": {
+							"ExcelSourceID": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ID",
+									"type": "Expression"
+								}
+							},
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "00:01:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "CopyDataRawOriginal",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ExcelSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"value": "@if(empty(activity('WriteTaskStarted').output.firstRow.json_output),null,json(activity('WriteTaskStarted').output.firstRow.json_output))",
+						"type": "Expression"
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "GenericDataLakeExcelDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"datalakename": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceDataLakeName",
+								"type": "Expression"
+							},
+							"filesystem": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceFileSystem",
+								"type": "Expression"
+							},
+							"directory": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceDirectory",
+								"type": "Expression"
+							},
+							"filename": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceFileName",
+								"type": "Expression"
+							},
+							"worksheetindex": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.WorksheetIndex",
+								"type": "Expression"
+							},
+							"range": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.Range",
+								"type": "Expression"
+							},
+							"nullvalue": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.NullValue",
+								"type": "Expression"
+							},
+							"firstrowasheader": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.FirstRowAsHeader",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DestDataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DestFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestDirectory,'/parquet/current')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestFileName,'.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				]
+			},
+			{
+				"name": "Check if file written and copy to date partition",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "CopyDataRawOriginal",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "AddLoadDate",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(activity('CopyDataRawOriginal').output.filesWritten,0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CreateADFError",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[CreateADFError]",
+								"storedProcedureParameters": {
+									"ErrorMessage": {
+										"value": "error: No file was copied ",
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy To Date Folder",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "ParquetSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": false,
+										"enablePartitionDiscovery": false
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "GenericDataLakeParquetDataSet",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DestDataLakeName",
+											"type": "Expression"
+										},
+										"FileSystem": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DestFileSystem",
+											"type": "Expression"
+										},
+										"Directory": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestDirectory,'/parquet/current')",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestFileName,'.parquet')",
+											"type": "Expression"
+										},
+										"Compression": "Snappy"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "GenericDataLakeParquetDataSet",
+									"type": "DatasetReference",
+									"parameters": {
+										"DataLakeName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DestDataLakeName",
+											"type": "Expression"
+										},
+										"FileSystem": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DestFileSystem",
+											"type": "Expression"
+										},
+										"Directory": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestDirectory,'/parquet/',activity('WriteTaskStarted').output.firstRow.PartitionName)",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestFileName,'.parquet')",
+											"type": "Expression"
+										},
+										"Compression": "Snappy"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Check if file written and copy to date partition",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "AddLoadDate",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "CopyDataRawOriginal",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@activity('WriteTaskStarted').output.firstRow.AddLoadDate",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "AddLoadDateDataBricks",
+							"type": "DatabricksNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": "/Shared/release/notebooks/trusted/AddLoadDate",
+								"baseParameters": {
+									"FolderName": {
+										"value": "@concat(replace(activity('WriteTaskStarted').output.firstRow.DestDirectory,'formatted/',''),'/parquet')",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DestFileName",
+										"type": "Expression"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "DatabricksLinkedService",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"MinWorkers": 1,
+									"MaxWorkers": 4
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	}
+}

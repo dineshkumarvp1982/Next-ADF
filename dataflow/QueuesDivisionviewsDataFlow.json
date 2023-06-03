@@ -1,0 +1,80 @@
+{
+	"name": "QueuesDivisionviewsDataFlow",
+	"properties": {
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination",
+					"description": "Export data to GenericDataLakeParquetDataSet"
+				}
+			],
+			"transformations": [
+				{
+					"name": "flatten",
+					"description": "Unrolling arrays from entities to entities with columns 'division, id, name, selfUri'"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string (\"\"),",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          entities as (division as (id as string, name as string, selfUri as string), id as string, name as string, selfUri as string)[],",
+				"          firstUri as string,",
+				"          lastUri as string,",
+				"          nextUri as string,",
+				"          pageCount as short,",
+				"          pageNumber as short,",
+				"          pageSize as short,",
+				"          previousUri as string,",
+				"          selfUri as string,",
+				"          total as short",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(entities, entities),",
+				"     mapColumn(",
+				"          queue_id = entities.id,",
+				"          queue_name = entities.name,",
+				"          division_id = entities.division.id,",
+				"          division_name = entities.division.name",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> flatten",
+				"flatten sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

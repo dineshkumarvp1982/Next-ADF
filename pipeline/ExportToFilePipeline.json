@@ -1,0 +1,167 @@
+{
+	"name": "ExportToFilePipeline",
+	"properties": {
+		"description": "Extract data from source file or databricks table, transform/filter and export to file in a specified data lake destination. ",
+		"activities": [
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "export_to_file",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "export_to_file",
+				"description": "Export data from source files and/or data bricks tables to a file. Specifically built for Reiss project however could accommodate exports for all clients with a few tweaks. ",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Shared/bissparktotalplatform/release/notebooks/export_to_file",
+					"baseParameters": {
+						"PartnerCode": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.PartnerCode)",
+							"type": "Expression"
+						},
+						"ClientId": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.ClientId)",
+							"type": "Expression"
+						},
+						"DestinationFilePath": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.DestinationFilePath)",
+							"type": "Expression"
+						},
+						"DestinationFileName": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.DestinationFileName)",
+							"type": "Expression"
+						},
+						"DestinationFileExtension": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.DestinationFileExtension)",
+							"type": "Expression"
+						},
+						"ExportToFileSourceName": {
+							"value": "@string(activity('WriteTaskStarted').output.firstRow.ExportToFileSourceName)",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DatabricksLinkedService",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"MinWorkers": 1,
+						"MaxWorkers": 4
+					}
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteExportToFileStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"ExportToFileSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,229 @@
+{
+	"name": "DeltaGenesysApiToJsonBulkParamExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupParameterFile",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.15:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@pipeline().parameters.PartitionDirectory",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@pipeline().parameters.LookUpFile",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachRow",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupParameterFile",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupParameterFile').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 10,
+					"activities": [
+						{
+							"name": "DeltaGenesysApiToJsonBulkApiPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaGenesysApiToJsonBulkApiPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"PartitionName": {
+										"value": "@pipeline().parameters.PartitionName",
+										"type": "Expression"
+									},
+									"HostName": {
+										"value": "@pipeline().parameters.HostName",
+										"type": "Expression"
+									},
+									"AccessToken": {
+										"value": "@pipeline().parameters.AccessToken",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@pipeline().parameters.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@pipeline().parameters.FileName",
+										"type": "Expression"
+									},
+									"Requestbody": {
+										"value": "@pipeline().parameters.Requestbody",
+										"type": "Expression"
+									},
+									"ApiUrl": {
+										"value": "@pipeline().parameters.ApiUrl",
+										"type": "Expression"
+									},
+									"ApiMethod": {
+										"value": "@pipeline().parameters.ApiMethod",
+										"type": "Expression"
+									},
+									"DataLakeName": {
+										"value": "@pipeline().parameters.DataLakeName",
+										"type": "Expression"
+									},
+									"DataLakeFileSystem": {
+										"value": "@pipeline().parameters.DataLakeFileSystem",
+										"type": "Expression"
+									},
+									"Directory": {
+										"value": "@pipeline().parameters.Directory",
+										"type": "Expression"
+									},
+									"Param1": {
+										"value": "@item().conversationId",
+										"type": "Expression"
+									},
+									"Param2": {
+										"value": "@pipeline().parameters.Param2",
+										"type": "Expression"
+									},
+									"Param3": {
+										"value": "@pipeline().parameters.Param3",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2023/02/06"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "api.euw2.pure.cloud"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "XsN02_wA41CfCsvgv7C5r7AY3IR-xlldKKaNSi2I0zl4HX0F5MbNgkYswRTPYIvZmbhNsO4x_gzB55BK_O8lrA"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/genesys/v2/conversation_attributes_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "conversation_id_data-00001"
+			},
+			"DataDestinationApiId": {
+				"type": "string"
+			},
+			"Requestbody": {
+				"type": "string"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://api.euw2.pure.cloud/api/v2/conversations/var_parameter1"
+			},
+			"ApiMethod": {
+				"type": "string",
+				"defaultValue": "GET"
+			},
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"DataLakeFileSystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			},
+			"Directory": {
+				"type": "string",
+				"defaultValue": "formatted/genesys/v2/conversation_id_data/parquet/2023/02/06"
+			},
+			"LookUpFile": {
+				"type": "string"
+			},
+			"Param1": {
+				"type": "string"
+			},
+			"Param2": {
+				"type": "string"
+			},
+			"Param3": {
+				"type": "string"
+			},
+			"PartitionDirectory": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"ApiUrlParam1": {
+				"type": "String"
+			},
+			"ApiUrlParam2": {
+				"type": "String"
+			},
+			"ApiUrlParam3": {
+				"type": "String"
+			},
+			"ApiUrlFinal": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	}
+}

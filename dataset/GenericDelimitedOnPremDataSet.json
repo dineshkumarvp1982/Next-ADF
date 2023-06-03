@@ -1,0 +1,102 @@
+{
+	"name": "GenericDelimitedOnPremDataSet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "FileSystemLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"WindowsAuthUserName": {
+					"value": "@dataset().WindowsAuthUserName",
+					"type": "Expression"
+				},
+				"WindowsAuthPasswordInKeyVault": {
+					"value": "@dataset().WindowsAuthPasswordInKeyVault",
+					"type": "Expression"
+				},
+				"FolderName": {
+					"value": "@dataset().Folder",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Folder": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"Delimiter": {
+				"type": "string",
+				"defaultValue": ","
+			},
+			"QuoteChar": {
+				"type": "string",
+				"defaultValue": "\""
+			},
+			"EscapeChar": {
+				"type": "string",
+				"defaultValue": "\\"
+			},
+			"Encoding": {
+				"type": "string",
+				"defaultValue": "UTF-8"
+			},
+			"FirstRowAsHeader": {
+				"type": "bool",
+				"defaultValue": true
+			},
+			"WindowsAuthUserName": {
+				"type": "string",
+				"defaultValue": "Next-PLC\\Admin-BIS-DBA"
+			},
+			"WindowsAuthPasswordInKeyVault": {
+				"type": "string",
+				"defaultValue": "AdminBISDBA"
+			},
+			"NullValue": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@dataset().FileName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().Folder",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": {
+				"value": "@dataset().Delimiter",
+				"type": "Expression"
+			},
+			"encodingName": {
+				"value": "@dataset().Encoding",
+				"type": "Expression"
+			},
+			"escapeChar": {
+				"value": "@dataset().EscapeChar",
+				"type": "Expression"
+			},
+			"firstRowAsHeader": {
+				"value": "@dataset().FirstRowAsHeader",
+				"type": "Expression"
+			},
+			"nullValue": {
+				"value": "@coalesce(dataset().NullValue,'')",
+				"type": "Expression"
+			},
+			"quoteChar": {
+				"value": "@dataset().QuoteChar",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

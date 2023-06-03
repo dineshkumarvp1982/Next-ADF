@@ -1,0 +1,15 @@
+{
+	"name": "DataLakeLinkedService",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://bisdatalakedevv2.dfs.core.windows.net"
+		},
+		"connectVia": {
+			"referenceName": "AzureIntegrationRuntimeEUW",
+			"type": "IntegrationRuntimeReference"
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/linkedservices"
+}

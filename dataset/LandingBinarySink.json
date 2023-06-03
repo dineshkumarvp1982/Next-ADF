@@ -1,0 +1,26 @@
+{
+	"name": "LandingBinarySink",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DataLakeLandingLinkedService",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"FolderPath": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@dataset().FolderPath",
+					"type": "Expression"
+				},
+				"fileSystem": "inbound"
+			}
+		}
+	}
+}

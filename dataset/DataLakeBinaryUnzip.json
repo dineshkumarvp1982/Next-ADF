@@ -1,0 +1,41 @@
+{
+	"name": "DataLakeBinaryUnzip",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "GenericAzureDataLakeLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DataLakeName": {
+					"value": "@dataset().DataLakeName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"DataLakeName": {
+				"type": "string"
+			},
+			"FileSystem": {
+				"type": "string"
+			},
+			"Directory": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@dataset().Directory",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().FileSystem",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}

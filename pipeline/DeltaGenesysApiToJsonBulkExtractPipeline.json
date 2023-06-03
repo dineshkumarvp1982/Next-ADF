@@ -1,0 +1,252 @@
+{
+	"name": "DeltaGenesysApiToJsonBulkExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupDependantApi",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.01:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[ReadDeltaApiParameters]",
+						"storedProcedureParameters": {
+							"DataDestinationApiId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.DataDestinationApiId",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": "[Control].DeltaApiparameters"
+						}
+					}
+				}
+			},
+			{
+				"name": "GetLookupFilesMetadata",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "LookupDependantApi",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@replace(replace(activity('LookupDependantApi').output.firstRow.SourceFolderName,'/raw/',''), 'current', pipeline().parameters.PartitionName)",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('LookupDependantApi').output.firstRow.SourceFileName,'*.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					},
+					"fieldList": [
+						"itemName",
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					}
+				}
+			},
+			{
+				"name": "For Each Partition",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "GetLookupFilesMetadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetLookupFilesMetadata').output.childItems",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 10,
+					"activities": [
+						{
+							"name": "DeltaGenesysApiToJsonBulkParamExtractPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaGenesysApiToJsonBulkParamExtractPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"PartitionName": {
+										"value": "@pipeline().parameters.PartitionName",
+										"type": "Expression"
+									},
+									"HostName": {
+										"value": "@pipeline().parameters.HostName",
+										"type": "Expression"
+									},
+									"AccessToken": {
+										"value": "@pipeline().parameters.AccessToken",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@pipeline().parameters.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@pipeline().parameters.FileName",
+										"type": "Expression"
+									},
+									"DataDestinationApiId": {
+										"value": "@pipeline().parameters.DataDestinationApiId",
+										"type": "Expression"
+									},
+									"Requestbody": {
+										"value": "@pipeline().parameters.Requestbody",
+										"type": "Expression"
+									},
+									"ApiUrl": {
+										"value": "@pipeline().parameters.ApiUrl",
+										"type": "Expression"
+									},
+									"ApiMethod": {
+										"value": "@pipeline().parameters.ApiMethod",
+										"type": "Expression"
+									},
+									"DataLakeName": {
+										"value": "@pipeline().parameters.DataLakeName",
+										"type": "Expression"
+									},
+									"DataLakeFileSystem": {
+										"value": "@pipeline().parameters.DataLakeFileSystem",
+										"type": "Expression"
+									},
+									"Directory": {
+										"value": "@replace(activity('LookupDependantApi').output.firstRow.SourceFolderName,'/raw/','')",
+										"type": "Expression"
+									},
+									"LookUpFile": {
+										"value": "@item().name",
+										"type": "Expression"
+									},
+									"Param1": {
+										"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter1,null),'',activity('LookupDependantApi').output.firstRow.Parameter1)",
+										"type": "Expression"
+									},
+									"Param2": {
+										"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter2,null),'',activity('LookupDependantApi').output.firstRow.Parameter2)",
+										"type": "Expression"
+									},
+									"Param3": {
+										"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter3,null),'',activity('LookupDependantApi').output.firstRow.Parameter3)",
+										"type": "Expression"
+									},
+									"PartitionDirectory": {
+										"value": "@replace(replace(activity('LookupDependantApi').output.firstRow.SourceFolderName,'/raw/',''), 'current', pipeline().parameters.PartitionName)",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2023/02/06"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "api.euw2.pure.cloud"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "XsN02_wA41CfCsvgv7C5r7AY3IR-xlldKKaNSi2I0zl4HX0F5MbNgkYswRTPYIvZmbhNsO4x_gzB55BK_O8lrA"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/genesys/v2/conversation_attributes_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "conversation_attributes_data"
+			},
+			"DataDestinationApiId": {
+				"type": "string"
+			},
+			"Requestbody": {
+				"type": "string"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://api.euw2.pure.cloud/api/v2/conversations/var_parameter1"
+			},
+			"ApiMethod": {
+				"type": "string",
+				"defaultValue": "GET"
+			},
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"DataLakeFileSystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	}
+}

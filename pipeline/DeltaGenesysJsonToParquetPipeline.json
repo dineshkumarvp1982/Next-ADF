@@ -1,0 +1,805 @@
+{
+	"name": "DeltaGenesysJsonToParquetPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "SwitchDataFlow",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "AssignParquetFolderName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@pipeline().parameters.TransformationJob",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "EvaluationAggregateDataFlow",
+							"activities": [
+								{
+									"name": "EvoluationAggregateDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "EvaluationAggregateDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(pipeline().parameters.FileName,'.parquet')",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "ConversationsAggregateDataFlow",
+							"activities": [
+								{
+									"name": "ConversationsAggregateDataflow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "ConversationsAggregateDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(pipeline().parameters.FileName,'.parquet')",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "ConversationsDetailsDataFlow",
+							"activities": [
+								{
+									"name": "ConversationsDetailsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "ConversationsDetailsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 32,
+											"computeType": "MemoryOptimized"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "UserDetailsDataFlow",
+							"activities": [
+								{
+									"name": "UserDetailsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "UserDetailsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 32,
+											"computeType": "MemoryOptimized"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "EvaluationConversationsDataFlow",
+							"activities": [
+								{
+									"name": "EvaluationConversationsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "EvaluationConversationsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "EvaluationPublishedFormsDataFlow",
+							"activities": [
+								{
+									"name": "EvaluationPublishedFormsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "EvaluationPublishedFormsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "QueuesDivisionviewsDataFlow",
+							"activities": [
+								{
+									"name": "QueuesDivisionviewsDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "QueuesDivisionviewsDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "EvaluationUserSearchDataFlow",
+							"activities": [
+								{
+									"name": "UserSearchDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "EvaluationUserSearchDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 32,
+											"computeType": "MemoryOptimized"
+										},
+										"traceLevel": "Coarse"
+									}
+								}
+							]
+						},
+						{
+							"value": "ConversationsIdDataFlow",
+							"activities": [
+								{
+									"name": "ConversationsIdDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.02:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "ConversationsIdDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						},
+						{
+							"value": "ConversationsAttributesDataFlow",
+							"activities": [
+								{
+									"name": "ConversationsAttributesDataFlow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "ConversationsAttributesDataFlow",
+											"type": "DataFlowReference",
+											"parameters": {
+												"FolderName": {
+													"value": "'@{variables('JsonFolderName')}'",
+													"type": "Expression"
+												},
+												"FileName": {
+													"value": "'@{pipeline().parameters.FileName}'",
+													"type": "Expression"
+												}
+											},
+											"datasetParameters": {
+												"ParquetDestination": {
+													"DataLakeName": {
+														"value": "@pipeline().parameters.DataLakeName",
+														"type": "Expression"
+													},
+													"FileSystem": {
+														"value": "@pipeline().parameters.DataLakeFileSystem",
+														"type": "Expression"
+													},
+													"Directory": {
+														"value": "@variables('ParquetFolderName')",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@pipeline().parameters.FileName",
+														"type": "Expression"
+													},
+													"Compression": "Snappy"
+												}
+											}
+										},
+										"compute": {
+											"coreCount": 16,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "AssignJsonFolderName",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "JsonFolderName",
+					"value": {
+						"value": "@concat(concat(concat(replace(pipeline().parameters.FolderName,'/raw/',''),'/'),pipeline().parameters.PartitionName),'/')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "AssignParquetFolderName",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "AssignJsonFolderName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ParquetFolderName",
+					"value": {
+						"value": "@concat(concat(replace(pipeline().parameters.FolderName,'/raw/original','formatted'),'/parquet/'),pipeline().parameters.PartitionName)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "CopyParquetFileToCurrent",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "SwitchDataFlow",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": false,
+							"wildcardFolderPath": {
+								"value": "@variables('ParquetFolderName')",
+								"type": "Expression"
+							},
+							"wildcardFileName": {
+								"value": "@concat(pipeline().parameters.FileName,'*.parquet')",
+								"type": "Expression"
+							},
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@variables('ParquetFolderName')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(pipeline().parameters.FileName,'*.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@concat(replace(pipeline().parameters.FolderName,'/raw/original','formatted'),'/parquet/current/')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(pipeline().parameters.FileName,'.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					}
+				]
+			}
+		],
+		"parameters": {
+			"TransformationJob": {
+				"type": "string",
+				"defaultValue": "ConversationsAttributesDataFlow"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/genesys/v2/conversation_attributes_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "ConversationsAttributesDataFlow"
+			},
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2023/02/06"
+			},
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"DataLakeFileSystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			}
+		},
+		"variables": {
+			"ParquetFolderName": {
+				"type": "String"
+			},
+			"JsonFolderName": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	}
+}

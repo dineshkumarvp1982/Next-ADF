@@ -1,0 +1,339 @@
+{
+	"name": "NmonSqlDataSet",
+	"properties": {
+		"description": "SQL connection object for the NMon Feed database",
+		"linkedServiceName": {
+			"referenceName": "NMonReportingSqlLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"ServerName": {
+					"value": "@dataset().ServerName",
+					"type": "Expression"
+				},
+				"DatabaseName": {
+					"value": "@dataset().DatabaseName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"schema": {
+				"type": "string",
+				"defaultValue": "Reference"
+			},
+			"table": {
+				"type": "string"
+			},
+			"ServerName": {
+				"type": "string"
+			},
+			"DatabaseName": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlMITable",
+		"schema": [
+			{
+				"name": "DateKey",
+				"type": "varchar"
+			},
+			{
+				"name": "Date",
+				"type": "varchar"
+			},
+			{
+				"name": "DateDesc",
+				"type": "char"
+			},
+			{
+				"name": "DayName",
+				"type": "char"
+			},
+			{
+				"name": "FinDayOfWeek",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "DirDayOfWeek",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "FinWeek",
+				"type": "char"
+			},
+			{
+				"name": "DirWeek",
+				"type": "char"
+			},
+			{
+				"name": "MktWeek",
+				"type": "char"
+			},
+			{
+				"name": "LYFinWeek",
+				"type": "char"
+			},
+			{
+				"name": "FinWeekNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "DirWeekNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "MktWeekNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "LyFinWeekNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "MonthNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "MonthName",
+				"type": "char"
+			},
+			{
+				"name": "FinMonth",
+				"type": "char"
+			},
+			{
+				"name": "FinMonthNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "DirSeasonCode",
+				"type": "char"
+			},
+			{
+				"name": "DirSeason",
+				"type": "char"
+			},
+			{
+				"name": "FinSeasonCode",
+				"type": "char"
+			},
+			{
+				"name": "FinSeason",
+				"type": "char"
+			},
+			{
+				"name": "MktSeasonCode",
+				"type": "char"
+			},
+			{
+				"name": "MktSeason",
+				"type": "char"
+			},
+			{
+				"name": "FinYear",
+				"type": "char"
+			},
+			{
+				"name": "DirYear",
+				"type": "char"
+			},
+			{
+				"name": "MktYear",
+				"type": "char"
+			},
+			{
+				"name": "FinYearNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "DirYearNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "MktYearNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "ProductWeek",
+				"type": "char"
+			},
+			{
+				"name": "ProductWeekNo",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "ProductDayOfWeek",
+				"type": "tinyint",
+				"precision": 3
+			},
+			{
+				"name": "ProductSeasonCode",
+				"type": "char"
+			},
+			{
+				"name": "ProductSeason",
+				"type": "char"
+			},
+			{
+				"name": "ProductYear",
+				"type": "char"
+			},
+			{
+				"name": "ProductYearNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "TYProductSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "LYProductSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "LYProductWeek",
+				"type": "char"
+			},
+			{
+				"name": "2YProductSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "2YProductWeek",
+				"type": "char"
+			},
+			{
+				"name": "DirWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "DirWeekSeqNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "LYDirWeek",
+				"type": "char"
+			},
+			{
+				"name": "LYDirWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "2YDirWeek",
+				"type": "char"
+			},
+			{
+				"name": "2YDirWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "2YFinWeek",
+				"type": "char"
+			},
+			{
+				"name": "2YFinWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "FinWeekSeqNo",
+				"type": "smallint",
+				"precision": 5
+			},
+			{
+				"name": "FinWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "LYFinWeekPrevious",
+				"type": "char"
+			},
+			{
+				"name": "WKProcessesInd",
+				"type": "char"
+			},
+			{
+				"name": "AllDates",
+				"type": "bit"
+			},
+			{
+				"name": "InsertedTimestamp",
+				"type": "char"
+			},
+			{
+				"name": "UpdatedTimestamp",
+				"type": "char"
+			},
+			{
+				"name": "HB_CV",
+				"type": "char"
+			},
+			{
+				"name": "BrandWeek",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "DirBrandWeek",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "DirFinWeek",
+				"type": "char"
+			},
+			{
+				"name": "DirFinWeekStartDate",
+				"type": "char"
+			},
+			{
+				"name": "LYFinSeason",
+				"type": "char"
+			},
+			{
+				"name": "TYDirSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "LYDirSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "2YDirSeasonStartWeek",
+				"type": "char"
+			},
+			{
+				"name": "DirFinSeason",
+				"type": "char"
+			},
+			{
+				"name": "DirFinPeriod",
+				"type": "char"
+			}
+		],
+		"typeProperties": {
+			"schema": {
+				"value": "@dataset().schema",
+				"type": "Expression"
+			},
+			"table": {
+				"value": "@dataset().table",
+				"type": "Expression"
+			}
+		}
+	}
+}

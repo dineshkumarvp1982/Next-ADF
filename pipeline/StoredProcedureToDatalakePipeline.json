@@ -1,0 +1,601 @@
+{
+	"name": "StoredProcedureToDatalakePipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "Set StoredProcedureQuery",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "StoredProcedureQuery",
+					"value": {
+						"value": "@concat('EXECUTE ', activity('WriteTaskStarted').output.firstRow.SourceStoredProcedureName)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Lookup Parameters",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Set StoredProcedureQuery",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[ReadStoredProcedureToDeltaLakeParameters]",
+						"storedProcedureParameters": {
+							"StoredProcedureToDeltaLakeId": {
+								"type": "Int32",
+								"value": {
+									"value": "@activity('WriteTaskStarted').output.firstRow.StoredProcedureToDeltaLakeSourceId",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Loop through parameters",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lookup Parameters",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lookup Parameters').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "Parameter has value",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@item().IsValue",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "Query - Set StoredProcedureQueryTemp",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StoredProcedureQueryTemp",
+											"value": {
+												"value": "@variables('StoredProcedureQuery')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Query - Lookup Parameter Value",
+										"type": "Lookup",
+										"dependsOn": [
+											{
+												"activity": "Query - Set StoredProcedureQueryTemp",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.00:15:00",
+											"retry": 1,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "SqlServerSource",
+												"sqlReaderQuery": {
+													"value": "@item().Query",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"dataset": {
+												"referenceName": "SqlServerDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"ServerName": {
+														"value": "@item().QueryServerName",
+														"type": "Expression"
+													},
+													"DatabaseName": {
+														"value": "@item().QueryDatabaseName",
+														"type": "Expression"
+													},
+													"WindowsAuthUserName": {
+														"value": "@item().QueryUsername",
+														"type": "Expression"
+													},
+													"WindowsAuthPasswordInKeyVault": {
+														"value": "@item().QueryPasswordInKeyVault",
+														"type": "Expression"
+													},
+													"TableName": " "
+												}
+											},
+											"firstRowOnly": true
+										}
+									},
+									{
+										"name": "Query - Set StoredProcedureQuery",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Query - Lookup Parameter Value",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StoredProcedureQuery",
+											"value": {
+												"value": "@concat(variables('StoredProcedureQueryTemp'), if(variables('FirstParameterAdded'), ', ', ' '), '''', activity('Query - Lookup Parameter Value').output.firstRow.Value, '''')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Query - Set FirstParameterAdded",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Query - Set StoredProcedureQuery",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "FirstParameterAdded",
+											"value": true
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "Value - Set StoredProcedureQueryTemp",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StoredProcedureQueryTemp",
+											"value": {
+												"value": "@variables('StoredProcedureQuery')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Value - Append to StoredProcedureQuery",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Value - Set StoredProcedureQueryTemp",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "StoredProcedureQuery",
+											"value": {
+												"value": "@concat(variables('StoredProcedureQueryTemp'), if(variables('FirstParameterAdded'), ', ', ' '), '''', item().Value, '''')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "Value - Set FirstParameterAdded",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "Value - Append to StoredProcedureQuery",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "FirstParameterAdded",
+											"value": true
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Copy data to partition",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Copy data to current folder",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.03:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SelfServeDataLakeParquetDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FolderName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/current')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, '.parquet')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SelfServeDataLakeParquetDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FolderName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/', activity('WriteTaskStarted').output.firstRow.PartitionName)",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, if(equals(activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix, ''), '', concat('_', activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix)), '.parquet')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy data to partition",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteStoredProcedureToDeltaLakeEnded]",
+					"storedProcedureParameters": {
+						"PipelineRunID": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "Guid"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcNow()",
+								"type": "Expression"
+							},
+							"type": "Datetimeoffset"
+						},
+						"SourceHistoryID": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"StoredProcedureToDeltaLakeSourceId": {
+							"value": {
+								"value": "@pipeline().parameters.Id",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PartitionName": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"FilePartitionSuffix": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.FilePartitionSuffix",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Query": {
+							"value": {
+								"value": "@variables('StoredProcedureQuery')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"RowsCopied": {
+							"value": {
+								"value": "@activity('Copy data to current folder').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Copy data to current folder",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Loop through parameters",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.03:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@variables('StoredProcedureQuery')",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SqlServerDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"ServerName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+								"type": "Expression"
+							},
+							"DatabaseName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+								"type": "Expression"
+							},
+							"WindowsAuthUserName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+								"type": "Expression"
+							},
+							"WindowsAuthPasswordInKeyVault": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+								"type": "Expression"
+							},
+							"TableName": " "
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SelfServeDataLakeParquetDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.DestinationDataLakeName",
+								"type": "Expression"
+							},
+							"FolderName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFolderName, '/current')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('WriteTaskStarted').output.firstRow.DestinationFileName, '.parquet')",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "WriteTaskStarted",
+				"description": "WriteStoredProcedureToDeltaLakeStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.00:15:00",
+					"retry": 1,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteStoredProcedureToDeltaLakeStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"StoredProcedureToDeltaLakeSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"variables": {
+			"StoredProcedureQuery": {
+				"type": "String"
+			},
+			"FirstParameterAdded": {
+				"type": "Boolean"
+			},
+			"StoredProcedureQueryTemp": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

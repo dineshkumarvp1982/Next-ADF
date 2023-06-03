@@ -1,0 +1,25 @@
+{
+	"name": "GetPowerBIUsersTrigger",
+	"properties": {
+		"description": "This trigger is for getting the user list form pbi rest api and upload to blob",
+		"annotations": [],
+		"runtimeState": "Started",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "GetPowerBIUsers",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Minute",
+				"interval": 31,
+				"startTime": "2022-11-15T00:06:00",
+				"timeZone": "GMT Standard Time"
+			}
+		}
+	}
+}

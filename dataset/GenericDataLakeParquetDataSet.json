@@ -1,0 +1,60 @@
+{
+	"name": "GenericDataLakeParquetDataSet",
+	"properties": {
+		"description": "Parquet Data set with the ability to point at any data lake",
+		"linkedServiceName": {
+			"referenceName": "GenericAzureDataLakeLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"DataLakeName": {
+					"value": "@dataset().DataLakeName",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"DataLakeName": {
+				"type": "string",
+				"defaultValue": "bisdatalakedevv2"
+			},
+			"FileSystem": {
+				"type": "string",
+				"defaultValue": "raw"
+			},
+			"Directory": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"Compression": {
+				"type": "string",
+				"defaultValue": "Snappy"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().FileName",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().Directory",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().FileSystem",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": {
+				"value": "@dataset().Compression",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

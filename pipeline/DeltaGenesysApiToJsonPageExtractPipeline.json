@@ -1,0 +1,611 @@
+{
+	"name": "DeltaGenesysApiToJsonPageExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "CheckUntilLastPage",
+				"type": "Until",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(contains(variables('IsEmptyPage'),'true'),or(variables('IsGetDataFailed'),variables('IsCopyDataFailed')))",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "IncrementTempPageNumber",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntTempCounter",
+								"value": {
+									"value": "@string(add(int(variables('IntCounter')),1))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IncrementPageNumber",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IncrementTempPageNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IntCounter",
+								"value": {
+									"value": "@variables('IntTempCounter')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Api Method If Condition",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "IncrementPageNumber",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(pipeline().parameters.ApiMethod,'POST')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "GetApiDataGet",
+										"description": "Get Access Token",
+										"type": "WebActivity",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"url": {
+												"value": "@concat(pipeline().parameters.ApiUrl,variables('IntCounter'))",
+												"type": "Expression"
+											},
+											"method": "GET",
+											"headers": {
+												"Host": {
+													"value": "@pipeline().parameters.HostName",
+													"type": "Expression"
+												},
+												"Content-Type": {
+													"value": "application/json",
+													"type": "Expression"
+												},
+												"Authorization": {
+													"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+													"type": "Expression"
+												}
+											},
+											"body": {
+												"value": "@replace(replace(string(pipeline().parameters.Requestbody),'var_interval',pipeline().parameters.Interval),'var_intcounter',variables('IntCounter'))",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "SetDataCopyMethod",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "DataCopyMethod",
+											"value": {
+												"value": "@if(greater(activity('GetApiDataGet').output.pageNumber ,activity('GetApiDataGet').output.pageCount) , 'NULL' , 'GET')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "GetApiDataFailGet",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "GetApiDataFailed",
+											"errorCode": "100"
+										}
+									},
+									{
+										"name": "IsGetDataFailedGet",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataGet",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "IsGetDataFailed",
+											"value": {
+												"value": "@bool(1)",
+												"type": "Expression"
+											}
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "GetApiDataPost",
+										"description": "Get Access Token",
+										"type": "WebActivity",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"url": {
+												"value": "@pipeline().parameters.ApiUrl",
+												"type": "Expression"
+											},
+											"method": "POST",
+											"headers": {
+												"Host": {
+													"value": "@pipeline().parameters.HostName",
+													"type": "Expression"
+												},
+												"Content-Type": {
+													"value": "application/json",
+													"type": "Expression"
+												},
+												"Authorization": {
+													"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+													"type": "Expression"
+												}
+											},
+											"body": {
+												"value": "@replace(replace(string(pipeline().parameters.Requestbody),'var_interval',pipeline().parameters.Interval),'var_intcounter',variables('IntCounter'))",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "SetCopyMethodPost",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataPost",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "DataCopyMethod",
+											"value": {
+												"value": "@if(\n    empty(\n        if(contains(activity('GetApiDataPost').output, pipeline().parameters.PageName),variables('DummyEmptyPage'),null)\n        ),'NULL','POST')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "GetApiDataFailPost",
+										"type": "Fail",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataPost",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"message": "GetApiDataFailed",
+											"errorCode": "100"
+										}
+									},
+									{
+										"name": "IsGetDataFailedPost",
+										"description": "Assign Access Token To Variable",
+										"type": "SetVariable",
+										"dependsOn": [
+											{
+												"activity": "GetApiDataPost",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "IsGetDataFailed",
+											"value": {
+												"value": "@bool(1)",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						},
+						{
+							"name": "CopyDataIfNextPageLoad",
+							"type": "Switch",
+							"dependsOn": [
+								{
+									"activity": "Api Method If Condition",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@variables('DataCopyMethod')",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "POST",
+										"activities": [
+											{
+												"name": "GenesysExportToJsonByPageLevelPost",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "RestSource",
+														"httpRequestTimeout": "00:01:40",
+														"requestInterval": "00.00:00:00.010",
+														"requestMethod": "POST",
+														"requestBody": {
+															"value": "@replace(replace(string(pipeline().parameters.Requestbody),'var_interval',pipeline().parameters.Interval),'var_intcounter',variables('intCounter'))",
+															"type": "Expression"
+														},
+														"additionalHeaders": {
+															"Authorization": {
+																"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+																"type": "Expression"
+															},
+															"Host": {
+																"value": "@pipeline().parameters.HostName",
+																"type": "Expression"
+															},
+															"Content-Type": "application/json"
+														},
+														"paginationRules": {
+															"supportRFC5988": "true"
+														}
+													},
+													"sink": {
+														"type": "AzureBlobFSSink"
+													},
+													"enableStaging": false
+												},
+												"inputs": [
+													{
+														"referenceName": "GenesysApiDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"BaseURL": "@pipeline().parameters.ApiUrl"
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DataLakeJsonDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"FolderName": {
+																"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+																"type": "Expression"
+															},
+															"FileName": {
+																"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('IntCounter')),'.json')",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "CopyFailPost",
+												"type": "Fail",
+												"dependsOn": [
+													{
+														"activity": "GenesysExportToJsonByPageLevelPost",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"message": "CopyFail",
+													"errorCode": "200"
+												}
+											},
+											{
+												"name": "CopyDataFailedPost",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "CopyFailPost",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "IsCopyDataFailed",
+													"value": {
+														"value": "@bool(1)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"value": "GET",
+										"activities": [
+											{
+												"name": "GenesysExportToJsonByPageLevelGet",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "RestSource",
+														"httpRequestTimeout": "00:01:40",
+														"requestInterval": "00.00:00:00.010",
+														"requestMethod": "GET",
+														"additionalHeaders": {
+															"Authorization": {
+																"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+																"type": "Expression"
+															},
+															"Host": {
+																"value": "@pipeline().parameters.HostName",
+																"type": "Expression"
+															},
+															"Content-Type": "application/json"
+														},
+														"paginationRules": {
+															"supportRFC5988": "true"
+														}
+													},
+													"sink": {
+														"type": "AzureBlobFSSink"
+													},
+													"enableStaging": false
+												},
+												"inputs": [
+													{
+														"referenceName": "GenesysApiDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"BaseURL": {
+																"value": "@concat(pipeline().parameters.ApiUrl,variables('IntCounter'))",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DataLakeJsonDataset",
+														"type": "DatasetReference",
+														"parameters": {
+															"FolderName": {
+																"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+																"type": "Expression"
+															},
+															"FileName": {
+																"value": "@concat(concat(concat(pipeline().parameters.FileName,'_'),variables('IntCounter')),'.json')",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "CopyFailGet",
+												"type": "Fail",
+												"dependsOn": [
+													{
+														"activity": "GenesysExportToJsonByPageLevelGet",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"message": "CopyFail",
+													"errorCode": "200"
+												}
+											},
+											{
+												"name": "CopyDataFailedGet",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "CopyFailGet",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "IsCopyDataFailed",
+													"value": {
+														"value": "@bool(1)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"value": "NULL",
+										"activities": [
+											{
+												"name": "SetIsEmptyPage",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "IsEmptyPage",
+													"value": "'true'"
+												}
+											}
+										]
+									}
+								]
+							}
+						}
+					],
+					"timeout": "7.00:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string",
+				"defaultValue": "2022/02/02"
+			},
+			"ApiUrl": {
+				"type": "string",
+				"defaultValue": "https://api.euw2.pure.cloud/api/v2/analytics/conversations/details/query"
+			},
+			"FolderName": {
+				"type": "string",
+				"defaultValue": "/raw/original/genesys/v2/conversation_detail_data"
+			},
+			"FileName": {
+				"type": "string",
+				"defaultValue": "conversation_detail_data"
+			},
+			"IsPageExtract": {
+				"type": "string",
+				"defaultValue": "true"
+			},
+			"PageName": {
+				"type": "string",
+				"defaultValue": "conversations"
+			},
+			"Requestbody": {
+				"type": "string",
+				"defaultValue": "{\"interval\": \"var_interval\",         \"order\": \"asc\",          \"orderBy\": \"conversationStart\",           \"paging\": {\"pageSize\": 100, \"pageNumber\" : var_intcounter}}"
+			},
+			"HostName": {
+				"type": "string",
+				"defaultValue": "api.euw2.pure.cloud"
+			},
+			"AccessToken": {
+				"type": "string",
+				"defaultValue": "G4f32qoAU1JYNutZAxxkKQ8S0ZwdvPQQQyWel2HFBF3DGH02oxL3JZCyHVSxeEfuM_r93Hn3rK40EQboMwZatg"
+			},
+			"Interval": {
+				"type": "string",
+				"defaultValue": "2022-02-01T23:00:00.000Z/2022-02-02T23:01:00.000Z"
+			},
+			"ApiMethod": {
+				"type": "string",
+				"defaultValue": "POST"
+			}
+		},
+		"variables": {
+			"IntCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IntTempCounter": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"IsEmptyPage": {
+				"type": "String"
+			},
+			"DummyEmptyPage": {
+				"type": "Array",
+				"defaultValue": [
+					"false"
+				]
+			},
+			"IsGetDataFailed": {
+				"type": "Boolean",
+				"defaultValue": false
+			},
+			"IsCopyDataFailed": {
+				"type": "Boolean",
+				"defaultValue": false
+			},
+			"DataCopyMethod": {
+				"type": "String",
+				"defaultValue": "POST"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

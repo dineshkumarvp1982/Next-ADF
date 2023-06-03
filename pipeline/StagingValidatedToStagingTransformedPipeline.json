@@ -1,0 +1,163 @@
+{
+	"name": "StagingValidatedToStagingTransformedPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupLogStagingTransformed",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Notebook",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*.csv",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "DataLakeDelimitedDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"FolderName": {
+								"value": "log/staging/transformed/@{pipeline().parameters.FolderName}/current/@{pipeline().parameters.FileName}.csv",
+								"type": "Expression"
+							},
+							"FileName": " ",
+							"HasHeader": "True",
+							"Delimiter": ","
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "LookupLogStagingTransformed",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteStagingValidatedToStagingTransformed]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@pipeline().parameters.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"InStagingTransformed": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"RowsTransformed": {
+							"value": {
+								"value": "@activity('LookupLogStagingTransformed').output.firstRow.RowsTransformed",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Notebook",
+				"type": "DatabricksNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": {
+						"value": "@pipeline().parameters.TransformationJob",
+						"type": "Expression"
+					},
+					"baseParameters": {
+						"folder": {
+							"value": "@pipeline().parameters.FolderName",
+							"type": "Expression"
+						},
+						"file": {
+							"value": "@pipeline().parameters.FileName",
+							"type": "Expression"
+						},
+						"partition": {
+							"value": "@pipeline().parameters.PartitionName",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "DatabricksLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"SourceHistoryId": {
+				"type": "int"
+			},
+			"TransformationJob": {
+				"type": "string"
+			},
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"PartitionName": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Stages"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

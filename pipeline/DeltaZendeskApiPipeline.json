@@ -1,0 +1,417 @@
+{
+	"name": "DeltaZendeskApiPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteDeltaApiStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"DeltaApiSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							},
+							"ApiProviderName": {
+								"type": "String",
+								"value": "Zendesk"
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			},
+			{
+				"name": "WriteTaskEnded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "LookupLastProcessedWatermark",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[Status].[WriteDeltaApiEnded]",
+					"storedProcedureParameters": {
+						"SourceHistoryId": {
+							"value": {
+								"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"PipelineRun": {
+							"value": {
+								"value": "@utcnow()",
+								"type": "Expression"
+							},
+							"type": "DateTimeOffset"
+						},
+						"WatermarkValue": {
+							"value": {
+								"value": "@if(empty(activity('LookupLastProcessedWatermark').output?.firstRow?.WatermarkValue),formatDateTime(utcNow(),'yyyy-MM-dd HH:mm:ss.fff'),activity('LookupLastProcessedWatermark').output.firstRow.WatermarkValue)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"Status": {
+							"value": "Completed",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ETLManagementLinkedService",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "IfTransformationJobNotNull-JsonToParquet",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "SwitchPipeline-ApiToJson",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(activity('WriteTaskStarted').output.firstRow.TransformationJob, null))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "DeltaZendeskJsonToParquetPipeline",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "DeltaZendeskJsonToParquetPipeline",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"TransformationJob": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.TransformationJob",
+										"type": "Expression"
+									},
+									"FolderName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+										"type": "Expression"
+									},
+									"FileName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+										"type": "Expression"
+									},
+									"PartitionName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+										"type": "Expression"
+									},
+									"DataLakeName": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeName",
+										"type": "Expression"
+									},
+									"DataLakeFileSystem": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.DataLakeFileSystem",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LookupLastProcessedWatermark",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "IfTransformationJobNotNull-JsonToParquet",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 3,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT ISNULL(TempWatermarkValue,'@{activity('WriteTaskStarted').output.firstRow.WatermarkValue}') WatermarkValue FROM [History].[DeltaApiWatermarks] \nWHERE DeltaApiSourceId=@{activity('WriteTaskStarted').output.firstRow.DeltaApiSourceId} \nAND SourceHistoryId=@{activity('WriteTaskStarted').output.firstRow.SourceHistoryId}\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": "[History].[DeltaApiWatermarks] "
+						}
+					}
+				}
+			},
+			{
+				"name": "SwitchPipeline-ApiToJson",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@activity('WriteTaskStarted').output.firstRow.ExtractMethod",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "Full",
+							"activities": [
+								{
+									"name": "DeltaZendeskFullExtract",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaZendeskApiToJsonFullExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.AuthorizationKey",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "Cursor",
+							"activities": [
+								{
+									"name": "DeltaZendeskApiToJsonPaginationPipeline",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaZendeskApiToJsonCursorExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"PageName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PageName",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AccessToken": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.AuthorizationKey",
+												"type": "Expression"
+											},
+											"CursorId": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.WatermarkValue",
+												"type": "Expression"
+											},
+											"SourceHistoryId": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "Page",
+							"activities": [
+								{
+									"name": "DeltaZendeskApiToJsonPageExtractPipeline",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "DeltaZendeskApiToJsonPageExtractPipeline",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PartitionName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PartitionName",
+												"type": "Expression"
+											},
+											"ApiUrl": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiUrl",
+												"type": "Expression"
+											},
+											"FolderName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FolderName",
+												"type": "Expression"
+											},
+											"FileName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.FileName",
+												"type": "Expression"
+											},
+											"IsPageExtract": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.IsPageExtract",
+												"type": "Expression"
+											},
+											"PageName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.PageName",
+												"type": "Expression"
+											},
+											"Requestbody": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.Requestbody",
+												"type": "Expression"
+											},
+											"HostName": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiHostName",
+												"type": "Expression"
+											},
+											"AuthorizationKey": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.AuthorizationKey",
+												"type": "Expression"
+											},
+											"ApiMethod": {
+												"value": "@activity('WriteTaskStarted').output.firstRow.ApiMethod",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int",
+				"defaultValue": 5
+			}
+		},
+		"variables": {
+			"EmptyPage": {
+				"type": "String"
+			},
+			"NextPage": {
+				"type": "String"
+			},
+			"IncrementalCursor": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

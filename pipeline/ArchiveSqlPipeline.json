@@ -1,0 +1,476 @@
+{
+	"name": "ArchiveSqlPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfConnectionTypeIsManagedInstance",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceType, 'managedinstance')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEndedManagedInstance",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyManagedInstanceToPartition",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteArchiveSqlEnded]",
+								"storedProcedureParameters": {
+									"Archived": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Archived",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"RowsCopied": {
+										"value": {
+											"value": "@activity('CopyManagedInstance').output.rowsCopied",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "CopyManagedInstance",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlMISource",
+									"sqlReaderQuery": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.BaseQuery",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "AzureSqlManagedInstanceDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "CopyManagedInstanceToPartition",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyManagedInstance",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": true
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/@{activity('WriteTaskStarted').output.firstRow.PartitionName}",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "IfConnectionTypeIsOnPremise",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "WriteTaskStarted",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('WriteTaskStarted').output.firstRow.SourceType, 'onpremise')",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "WriteTaskEndedOnPremise",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyOnPremiseToPartition",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[Status].[WriteArchiveSqlEnded]",
+								"storedProcedureParameters": {
+									"Archived": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Archived",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"PipelineRun": {
+										"value": {
+											"value": "@utcnow()",
+											"type": "Expression"
+										},
+										"type": "DateTimeOffset"
+									},
+									"RowsCopied": {
+										"value": {
+											"value": "@activity('CopyOnPremise').output.rowsCopied",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"SourceHistoryId": {
+										"value": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.SourceHistoryId",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "ETLManagementLinkedService",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "CopyOnPremise",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@activity('WriteTaskStarted').output.firstRow.BaseQuery",
+										"type": "Expression"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "SqlServerDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"ServerName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.ServerName",
+											"type": "Expression"
+										},
+										"DatabaseName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.DatabaseName",
+											"type": "Expression"
+										},
+										"WindowsAuthUserName": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.Username",
+											"type": "Expression"
+										},
+										"WindowsAuthPasswordInKeyVault": {
+											"value": "@activity('WriteTaskStarted').output.firstRow.PasswordInKeyVault",
+											"type": "Expression"
+										},
+										"TableName": " "
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeParquetDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "CopyOnPremiseToPartition",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "CopyOnPremise",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 3,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureBlobFSSource",
+									"recursive": true
+								},
+								"sink": {
+									"type": "AzureBlobFSSink"
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/current",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DataLakeBinaryDataset",
+									"type": "DatasetReference",
+									"parameters": {
+										"FolderName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FolderName}/@{activity('WriteTaskStarted').output.firstRow.PartitionName}",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@{activity('WriteTaskStarted').output.firstRow.FileName}.parquet",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "WriteTaskStarted",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[WriteArchiveSqlStarted]",
+						"storedProcedureParameters": {
+							"PipelineId": {
+								"type": "Guid",
+								"value": {
+									"value": "@pipeline().RunId",
+									"type": "Expression"
+								}
+							},
+							"PipelineRun": {
+								"type": "DateTimeOffset",
+								"value": {
+									"value": "@utcnow()",
+									"type": "Expression"
+								}
+							},
+							"ArchiveSqlSourceId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.Id",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": " "
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Id": {
+				"type": "int"
+			}
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,103 @@
+{
+	"name": "UsersDataFlow",
+	"properties": {
+		"description": "Processes data from https://next.zendesk.com/api/v2/users?role[]=admin&role[]=agent\n",
+		"folder": {
+			"name": "ContactCentre/Zendesk"
+		},
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"linkedService": {
+						"referenceName": "DataLakeLinkedService",
+						"type": "LinkedServiceReference"
+					},
+					"name": "JsonSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "ParquetDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "FlattenColumns"
+				}
+			],
+			"scriptLines": [
+				"parameters{",
+				"     FolderName as string,",
+				"     FileName as string",
+				"}",
+				"source(output(",
+				"          count as short,",
+				"          next_page as string,",
+				"          previous_page as string,",
+				"          users as (active as boolean, alias as string, created_at as timestamp, custom_role_id as long, default_group_id as long, details as string, email as string, external_id as string, iana_time_zone as string, id as long, last_login_at as timestamp, locale as string, locale_id as short, moderator as boolean, name as string, notes as string, only_private_comments as boolean, organization_id as long, phone as long, photo as (content_type as string, content_url as string, deleted as boolean, file_name as string, height as short, id as long, inline as boolean, mapped_content_url as string, size as short, thumbnails as (content_type as string, content_url as string, deleted as boolean, file_name as string, height as short, id as long, inline as boolean, mapped_content_url as string, size as short, url as string, width as short)[], url as string, width as short), report_csv as boolean, restricted_agent as boolean, role as string, role_type as short, shared as boolean, shared_agent as boolean, shared_phone_number as boolean, signature as string, suspended as boolean, tags as string[], ticket_restriction as string, time_zone as string, two_factor_auth_enabled as string, updated_at as timestamp, url as string, user_fields as (department as string, title as string), verified as boolean)[]",
+				"     ),",
+				"     useSchema: false,",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: true,",
+				"     format: 'json',",
+				"     fileSystem: 'raw',",
+				"     documentForm: 'documentPerLine',",
+				"     backslashEscape: true,",
+				"     wildcardPaths:[(concat($FolderName,concat($FileName,'*.json')))]) ~> JsonSource",
+				"JsonSource foldDown(unroll(users),",
+				"     mapColumn(",
+				"          id = users.id,",
+				"          email = users.email,",
+				"          created_at = users.created_at,",
+				"          updated_at = users.updated_at,",
+				"          time_zone = users.time_zone,",
+				"          locale_id = users.locale_id,",
+				"          locale = users.locale,",
+				"          organization_id = users.organization_id,",
+				"          role = users.role,",
+				"          external_id = users.external_id,",
+				"          shared = users.shared,",
+				"          shared_agent = users.shared_agent,",
+				"          last_login_at = users.last_login_at,",
+				"          custom_role_id = users.custom_role_id,",
+				"          default_group_id = users.default_group_id,",
+				"          name = users.name",
+				"     ),",
+				"     skipDuplicateMapInputs: false,",
+				"     skipDuplicateMapOutputs: false) ~> FlattenColumns",
+				"FlattenColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'parquet',",
+				"     partitionFileNames:[(concat($FileName,'.parquet'))],",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     mapColumn(",
+				"          id,",
+				"          name,",
+				"          email,",
+				"          created_at,",
+				"          updated_at,",
+				"          time_zone,",
+				"          locale_id,",
+				"          locale,",
+				"          organization_id,",
+				"          role,",
+				"          external_id,",
+				"          shared,",
+				"          shared_agent,",
+				"          last_login_at,",
+				"          custom_role_id,",
+				"          default_group_id",
+				"     ),",
+				"     partitionBy('hash', 1)) ~> ParquetDestination"
+			]
+		}
+	}
+}

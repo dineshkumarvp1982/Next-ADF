@@ -1,0 +1,23 @@
+{
+	"name": "RestApiDataset",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ApiLinkedService",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"BaseURL": {
+					"value": "@dataset().BaseURL",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"BaseURL": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"schema": []
+	}
+}

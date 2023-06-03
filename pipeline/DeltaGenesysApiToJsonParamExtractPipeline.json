@@ -1,0 +1,419 @@
+{
+	"name": "DeltaGenesysApiToJsonParamExtractPipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "LookupParameterFile",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "LookupDependantApi",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ParquetSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@replace(activity('LookupDependantApi').output.firstRow.SourceFolderName,'/raw/','')",
+								"type": "Expression"
+							},
+							"wildcardFileName": {
+								"value": "@concat(activity('LookupDependantApi').output.firstRow.SourceFileName,'*.parquet')",
+								"type": "Expression"
+							},
+							"enablePartitionDiscovery": false
+						}
+					},
+					"dataset": {
+						"referenceName": "GenericDataLakeParquetDataSet",
+						"type": "DatasetReference",
+						"parameters": {
+							"DataLakeName": {
+								"value": "@pipeline().parameters.DataLakeName",
+								"type": "Expression"
+							},
+							"FileSystem": {
+								"value": "@pipeline().parameters.DataLakeFileSystem",
+								"type": "Expression"
+							},
+							"Directory": {
+								"value": "@replace(activity('LookupDependantApi').output.firstRow.SourceFolderName,'/raw/','')",
+								"type": "Expression"
+							},
+							"FileName": {
+								"value": "@concat(activity('LookupDependantApi').output.firstRow.SourceFileName,'.parquet')",
+								"type": "Expression"
+							},
+							"Compression": "Snappy"
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachRow",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LookupParameterFile",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LookupParameterFile').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "SetApiUrlParam1",
+							"description": "Assign API First Parameter Value",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ApiUrlParam1",
+								"value": {
+									"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter1,null),'',item()[activity('LookupDependantApi').output.firstRow.Parameter1])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetApiUrlParam2",
+							"description": "Assign API Second Parameter Value",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetApiUrlParam1",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ApiUrlParam2",
+								"value": {
+									"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter2,null),'',item()[activity('LookupDependantApi').output.firstRow.Parameter2])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetApiUrlParam3",
+							"description": "Assign API Third Parameter Value",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetApiUrlParam2",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ApiUrlParam3",
+								"value": {
+									"value": "@if(equals(activity('LookupDependantApi').output.firstRow.Parameter3,null),'',item()[activity('LookupDependantApi').output.firstRow.Parameter3])",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetApiUrlFinal",
+							"description": "Assign API Third Parameter Value",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SetApiUrlParam3",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ApiUrlFinal",
+								"value": {
+									"value": "@replace(replace(replace(pipeline().parameters.ApiUrl,'var_parameter1',variables('ApiUrlParam1')),'var_parameter2',variables('ApiUrlParam2')),'var_parameter3',variables('ApiUrlParam3'))",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IfPostApiMethod",
+							"type": "IfCondition",
+							"dependsOn": [
+								{
+									"activity": "SetApiUrlFinal",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(pipeline().parameters.ApiMethod, 'POST')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "FullParamGetExportToJson",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "RestSource",
+												"httpRequestTimeout": "00:01:40",
+												"requestInterval": "00.00:00:00.010",
+												"requestMethod": "GET",
+												"additionalHeaders": {
+													"Authorization": {
+														"value": "@concat('Bearer ', pipeline().parameters.AccessToken)",
+														"type": "Expression"
+													},
+													"Host": {
+														"value": "@pipeline().parameters.HostName",
+														"type": "Expression"
+													}
+												},
+												"paginationRules": {
+													"supportRFC5988": "true"
+												}
+											},
+											"sink": {
+												"type": "AzureBlobFSSink"
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "GenesysApiDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"BaseURL": {
+														"value": "@variables('ApiUrlFinal')",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DataLakeJsonDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(concat(concat(pipeline().parameters.FileName,'_'),variables('ApiUrlParam1')),'_'),variables('ApiUrlParam2')),'.json')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "FullPostExportToJson",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "7.00:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "RestSource",
+												"httpRequestTimeout": "00:01:40",
+												"requestInterval": "00.00:00:00.010",
+												"requestMethod": "POST",
+												"requestBody": {
+													"value": "@pipeline().parameters.Requestbody",
+													"type": "Expression"
+												},
+												"additionalHeaders": {
+													"Authorization": {
+														"value": "@concat('Bearer ',pipeline().parameters.AccessToken)",
+														"type": "Expression"
+													},
+													"Host": {
+														"value": "@pipeline().parameters.HostName",
+														"type": "Expression"
+													},
+													"Content-Type": "application/json"
+												},
+												"paginationRules": {
+													"supportRFC5988": "true"
+												}
+											},
+											"sink": {
+												"type": "AzureBlobFSSink"
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "GenesysApiDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"BaseURL": {
+														"value": "@variables('ApiUrlFinal')",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DataLakeJsonDataset",
+												"type": "DatasetReference",
+												"parameters": {
+													"FolderName": {
+														"value": "@concat(concat(pipeline().parameters.FolderName,'/'),pipeline().parameters.PartitionName)",
+														"type": "Expression"
+													},
+													"FileName": {
+														"value": "@concat(concat(concat(concat(concat(pipeline().parameters.FileName,'_'),variables('ApiUrlParam1')),'_'),variables('ApiUrlParam2')),'.json')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LookupDependantApi",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[Status].[ReadDeltaApiParameters]",
+						"storedProcedureParameters": {
+							"DataDestinationApiId": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.DataDestinationApiId",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ETLManagementDataset",
+						"type": "DatasetReference",
+						"parameters": {
+							"TableName": "[Control].DeltaApiparameters"
+						}
+					},
+					"firstRowOnly": true
+				}
+			}
+		],
+		"parameters": {
+			"PartitionName": {
+				"type": "string"
+			},
+			"HostName": {
+				"type": "string"
+			},
+			"AccessToken": {
+				"type": "string"
+			},
+			"FolderName": {
+				"type": "string"
+			},
+			"FileName": {
+				"type": "string"
+			},
+			"DataDestinationApiId": {
+				"type": "string"
+			},
+			"Requestbody": {
+				"type": "string"
+			},
+			"ApiUrl": {
+				"type": "string"
+			},
+			"ApiMethod": {
+				"type": "string"
+			},
+			"DataLakeName": {
+				"type": "string"
+			},
+			"DataLakeFileSystem": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"ApiUrlParam1": {
+				"type": "String"
+			},
+			"ApiUrlParam2": {
+				"type": "String"
+			},
+			"ApiUrlParam3": {
+				"type": "String"
+			},
+			"ApiUrlFinal": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "ContactCentre/Genesys"
+		},
+		"annotations": []
+	}
+}
