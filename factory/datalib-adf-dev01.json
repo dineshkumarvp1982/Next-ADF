@@ -1,0 +1,9 @@
+{
+	"name": "datalib-adf-dev01",
+	"location": "uksouth",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "3a2bcd11-04b8-4eb3-b1b4-b1e972f338ec",
+		"tenantId": "60254c56-01b9-4300-a6da-3cf3148a1d9f"
+	}
+}
