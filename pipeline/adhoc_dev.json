@@ -1,0 +1,9 @@
+{
+	"name": "adhoc_dev",
+	"properties": {
+		"folder": {
+			"name": "dk_dev"
+		},
+		"annotations": []
+	}
+}
