@@ -1,0 +1,9 @@
+{
+	"name": "LoadFileDataToSQLTable",
+	"properties": {
+		"folder": {
+			"name": "Test"
+		},
+		"annotations": []
+	}
+}
