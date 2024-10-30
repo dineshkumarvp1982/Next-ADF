@@ -9,7 +9,9 @@
 		"type": "Parquet",
 		"typeProperties": {
 			"location": {
-				"type": "AzureBlobStorageLocation"
+				"type": "AzureBlobStorageLocation",
+				"fileName": "employee.csv",
+				"container": "converted"
 			},
 			"compressionCodec": "snappy"
 		},
