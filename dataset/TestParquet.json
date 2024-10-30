@@ -10,7 +10,7 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobStorageLocation",
-				"fileName": "employee.csv",
+				"fileName": "employee_combined.csv",
 				"container": "converted"
 			},
 			"compressionCodec": "snappy"
