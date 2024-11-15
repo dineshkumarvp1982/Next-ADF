@@ -1,0 +1,17 @@
+{
+	"name": "ServerlessSQL",
+	"properties": {
+		"content": {
+			"query": "-- -- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://dscontosolake.dfs.core.windows.net/users/NYCTripSmall.parquet',\n        FORMAT = 'PARQUET'\n    ) AS [result]\n\n\n\n\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n            BULK '/users/NYCTripSmall.parquet',\n            DATA_SOURCE = 'dscontosolake',\n            FORMAT='PARQUET'\n    ) AS [result]",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

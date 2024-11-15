@@ -1,0 +1,591 @@
+{
+	"name": "ReadStorage",
+	"properties": {
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "Spark1",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "4ad957e1-7d64-47cb-a037-b8d6dfcab9bd"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1",
+				"state": {
+					"5683316c-a272-44a7-9869-4a9fbf39b0d9": {
+						"type": "Synapse.DataFrame",
+						"sync_state": {
+							"table": {
+								"rows": [
+									{
+										"0": "2",
+										"1": "2024-08-01 00:16:00",
+										"2": "2024-08-01 00:35:20",
+										"3": "N",
+										"4": "1",
+										"5": "65",
+										"6": "228",
+										"7": "1",
+										"8": "2.85",
+										"9": "19.8",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "22.3",
+										"17": "2",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:03:29",
+										"2": "2024-08-01 00:09:21",
+										"3": "N",
+										"4": "1",
+										"5": "74",
+										"6": "74",
+										"7": "1",
+										"8": "0.58",
+										"9": "7.2",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "9.7",
+										"17": "2",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:27:39",
+										"2": "2024-08-01 01:07:55",
+										"3": "N",
+										"4": "1",
+										"5": "129",
+										"6": "83",
+										"7": "1",
+										"8": "1.54",
+										"9": "33.1",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "35.6",
+										"17": "2",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:21:35",
+										"2": "2024-08-01 00:39:39",
+										"3": "N",
+										"4": "1",
+										"5": "66",
+										"6": "90",
+										"7": "1",
+										"8": "4.57",
+										"9": "22.6",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "5.57",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "33.42",
+										"17": "1",
+										"18": "1",
+										"19": "2.75"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:35:09",
+										"2": "2024-08-01 00:46:49",
+										"3": "N",
+										"4": "1",
+										"5": "129",
+										"6": "112",
+										"7": "1",
+										"8": "3.63",
+										"9": "17.7",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "20.2",
+										"17": "1",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-07-31 23:13:18",
+										"2": "2024-07-31 23:19:35",
+										"3": "N",
+										"4": "1",
+										"5": "75",
+										"6": "74",
+										"7": "1",
+										"8": "1.72",
+										"9": "10.0",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "12.5",
+										"17": "1",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "1",
+										"1": "2024-08-01 00:01:27",
+										"2": "2024-08-01 00:10:29",
+										"3": "N",
+										"4": "1",
+										"5": "65",
+										"6": "49",
+										"7": "1",
+										"8": "0.0",
+										"9": "9.3",
+										"10": "1.0",
+										"11": "1.5",
+										"12": "2.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "13.8",
+										"17": "1",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "1",
+										"1": "2024-08-01 00:19:25",
+										"2": "2024-08-01 00:25:52",
+										"3": "N",
+										"4": "1",
+										"5": "65",
+										"6": "181",
+										"7": "1",
+										"8": "0.0",
+										"9": "7.2",
+										"10": "1.0",
+										"11": "1.5",
+										"12": "1.9",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "11.6",
+										"17": "1",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:18:18",
+										"2": "2024-08-01 00:30:35",
+										"3": "N",
+										"4": "1",
+										"5": "82",
+										"6": "56",
+										"7": "1",
+										"8": "0.0",
+										"9": "11.4",
+										"10": "1.0",
+										"11": "0.5",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "13.9",
+										"17": "2",
+										"18": "1",
+										"19": "0.0"
+									},
+									{
+										"0": "2",
+										"1": "2024-08-01 00:30:10",
+										"2": "2024-08-01 00:30:13",
+										"3": "N",
+										"4": "5",
+										"5": "132",
+										"6": "264",
+										"7": "1",
+										"8": "0.09",
+										"9": "20.0",
+										"10": "0.0",
+										"11": "0.0",
+										"12": "0.0",
+										"13": "0.0",
+										"15": "1.0",
+										"16": "21.0",
+										"17": "1",
+										"18": "2",
+										"19": "0.0"
+									}
+								],
+								"schema": [
+									{
+										"key": "0",
+										"name": "VendorID",
+										"type": "int"
+									},
+									{
+										"key": "1",
+										"name": "lpep_pickup_datetime",
+										"type": "timestamp_ntz"
+									},
+									{
+										"key": "2",
+										"name": "lpep_dropoff_datetime",
+										"type": "timestamp_ntz"
+									},
+									{
+										"key": "3",
+										"name": "store_and_fwd_flag",
+										"type": "string"
+									},
+									{
+										"key": "4",
+										"name": "RatecodeID",
+										"type": "bigint"
+									},
+									{
+										"key": "5",
+										"name": "PULocationID",
+										"type": "int"
+									},
+									{
+										"key": "6",
+										"name": "DOLocationID",
+										"type": "int"
+									},
+									{
+										"key": "7",
+										"name": "passenger_count",
+										"type": "bigint"
+									},
+									{
+										"key": "8",
+										"name": "trip_distance",
+										"type": "double"
+									},
+									{
+										"key": "9",
+										"name": "fare_amount",
+										"type": "double"
+									},
+									{
+										"key": "10",
+										"name": "extra",
+										"type": "double"
+									},
+									{
+										"key": "11",
+										"name": "mta_tax",
+										"type": "double"
+									},
+									{
+										"key": "12",
+										"name": "tip_amount",
+										"type": "double"
+									},
+									{
+										"key": "13",
+										"name": "tolls_amount",
+										"type": "double"
+									},
+									{
+										"key": "14",
+										"name": "ehail_fee",
+										"type": "double"
+									},
+									{
+										"key": "15",
+										"name": "improvement_surcharge",
+										"type": "double"
+									},
+									{
+										"key": "16",
+										"name": "total_amount",
+										"type": "double"
+									},
+									{
+										"key": "17",
+										"name": "payment_type",
+										"type": "bigint"
+									},
+									{
+										"key": "18",
+										"name": "trip_type",
+										"type": "bigint"
+									},
+									{
+										"key": "19",
+										"name": "congestion_surcharge",
+										"type": "double"
+									}
+								],
+								"truncated": false
+							},
+							"isSummary": false,
+							"language": "scala",
+							"wranglerEntryContext": {
+								"dataframeType": "pyspark"
+							}
+						},
+						"persist_state": {
+							"view": {
+								"type": "details",
+								"chartOptions": {
+									"chartType": "bar",
+									"aggregationType": "sum",
+									"categoryFieldKeys": [
+										"3"
+									],
+									"seriesFieldKeys": [
+										"0"
+									],
+									"isStacked": false
+								}
+							}
+						}
+					},
+					"b2d7892f-19bb-4690-bfd9-a2876ee4beb4": {
+						"type": "Synapse.DataFrame",
+						"sync_state": {
+							"table": {
+								"rows": [
+									{
+										"0": "1",
+										"1": "122390.34999999973",
+										"2": "3.147414236486132"
+									},
+									{
+										"0": "2",
+										"1": "18104.849999999988",
+										"2": "3.4978458268933514"
+									},
+									{
+										"0": "3",
+										"1": "2519.2700000000027",
+										"2": "4.1435361842105305"
+									},
+									{
+										"0": "4",
+										"1": "1766.15",
+										"2": "5.1945588235294125"
+									},
+									{
+										"0": "5",
+										"1": "4278.539999999996",
+										"2": "3.833817204301072"
+									},
+									{
+										"0": "6",
+										"1": "2212.6499999999983",
+										"2": "2.466722408026754"
+									},
+									{
+										"0": "7",
+										"1": "24.73",
+										"2": "8.243333333333334"
+									},
+									{
+										"0": "8",
+										"1": "1.4100000000000001",
+										"2": "0.47000000000000003"
+									},
+									{
+										"0": "9",
+										"1": "49.97",
+										"2": "9.994"
+									}
+								],
+								"schema": [
+									{
+										"key": "0",
+										"name": "passenger_count",
+										"type": "bigint"
+									},
+									{
+										"key": "1",
+										"name": "SumTripDistance",
+										"type": "double"
+									},
+									{
+										"key": "2",
+										"name": "AvgTripDistance",
+										"type": "double"
+									}
+								],
+								"truncated": false
+							},
+							"isSummary": false,
+							"language": "scala",
+							"wranglerEntryContext": {
+								"candidateVariableNames": [
+									"df"
+								],
+								"dataframeType": "pyspark"
+							}
+						},
+						"persist_state": {
+							"view": {
+								"type": "details",
+								"chartOptions": {
+									"chartType": "bar",
+									"aggregationType": "sum",
+									"categoryFieldKeys": [
+										"1"
+									],
+									"seriesFieldKeys": [
+										"0"
+									],
+									"isStacked": false
+								}
+							}
+						}
+					}
+				}
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/13a59055-a03d-4740-a34d-75fcbccef27d/resourceGroups/datalib-rg-01-uks-dev/providers/Microsoft.Synapse/workspaces/hemasoftsqlserver/bigDataPools/Spark1",
+				"name": "Spark1",
+				"type": "Spark",
+				"endpoint": "https://hemasoftsqlserver.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/Spark1",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.4",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "python"
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%pyspark\r\n",
+					"df = spark.read.load('abfss://users@dscontosolake.dfs.core.windows.net/NYCTripSmall.parquet', format='parquet')\r\n",
+					"display(df.limit(10))\r\n",
+					"\r\n",
+					""
+				],
+				"execution_count": 1
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "python"
+					},
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					}
+				},
+				"source": [
+					"%%pyspark\r\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS nyctaxi\")\r\n",
+					"df.write.mode(\"overwrite\").saveAsTable(\"nyctaxi.trip\")"
+				],
+				"execution_count": 2
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "python"
+					},
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%pyspark\r\n",
+					"df = spark.sql(\"\"\"\r\n",
+					"   SELECT passenger_count,\r\n",
+					"       SUM(trip_distance) as SumTripDistance,\r\n",
+					"       AVG(trip_distance) as AvgTripDistance\r\n",
+					"   FROM nyctaxi.trip\r\n",
+					"   WHERE trip_distance > 0 AND passenger_count > 0\r\n",
+					"   GROUP BY passenger_count\r\n",
+					"   ORDER BY passenger_count\r\n",
+					"\"\"\") \r\n",
+					"display(df)\r\n",
+					"df.write.saveAsTable(\"nyctaxi.passengercountstats\")"
+				],
+				"execution_count": 7
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"microsoft": {
+						"language": "sparksql"
+					},
+					"jupyter": {
+						"source_hidden": false,
+						"outputs_hidden": false
+					},
+					"nteract": {
+						"transient": {
+							"deleting": false
+						}
+					},
+					"collapsed": false
+				},
+				"source": [
+					"%%sql\r\n",
+					"select * from nyctaxi.passengercountstats"
+				],
+				"execution_count": 8
+			}
+		]
+	}
+}

@@ -1,0 +1,17 @@
+{
+	"name": "Database",
+	"properties": {
+		"content": {
+			"query": "-- CREATE DATABASE DataExplorationDB \n--                 COLLATE Latin1_General_100_BIN2_UTF8\nUSE DataExplorationDB\n-- CREATE EXTERNAL DATA SOURCE ContosoLake\n-- WITH ( LOCATION = 'https://dscontosolake.dfs.core.windows.net')\n\n-- CREATE LOGIN data_explorer WITH PASSWORD = 'Ramsaran@123';\n\nCREATE USER data_explorer FOR LOGIN data_explorer;\nGO\nGRANT ADMINISTER DATABASE BULK OPERATIONS TO data_explorer;\nGO",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "DataExplorationDB",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
